@@ -18,8 +18,6 @@ Enemy.prototype.update = function(dt) {
     // which will ensure the game runs at the same speed for
     // all computers.
     this.x += dt * this.speed;
-    console.log(ctx);
-    console.log(ctx.canvas.width);
     if (this.x > ctx.canvas.width) {
         this.x = this.x % ctx.canvas.width;
     }
@@ -36,6 +34,7 @@ Enemy.prototype.render = function() {
 var Player = function() {
     this.x = 200;
     this.y = 450;
+    this.moveDist = 50;
     this.sprite = "images/char-boy.png"
 };
 
@@ -46,6 +45,54 @@ Player.prototype.render = function() {
 Player.prototype.update = function() {
     //TODO: implement this
 };
+
+Player.prototype.handleInput = function(key) {
+    var moveDist = 50;
+    switch (key) {
+        case "left":
+            this.moveLeft();
+            break;
+        case "right":
+            this.moveRight();
+            break;
+        case "up":
+            this.moveUp();
+            break;
+        case "down":
+            this.moveDown();
+    }
+};
+
+Player.prototype.moveLeft = function() {
+    var newX = this.x - 83;
+    if (newX > 0) {
+        this.x = newX;
+    }
+};
+
+Player.prototype.moveRight = function() {
+    var newX = this.x + 83;
+    if (newX < ctx.canvas.width) {
+        this.x = newX;
+    }
+};
+
+Player.prototype.moveUp = function() {
+    var newY = this.y - 101;
+    if (newY > 0) {
+        this.y = newY;
+    }
+};
+
+Player.prototype.moveDown = function() {
+    var newY = this.y + 101;
+    if (newY < ctx.canvas.height) {
+        this.y = newY;
+    }
+};
+
+
+
 
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
