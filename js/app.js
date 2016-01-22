@@ -1,9 +1,24 @@
+// Map dimensions
+var MAP = {
+    minXTile: 0,
+    maxXTile: 4,
+    minYTile: 0,
+    maxYTile: 4,
+    tile: {
+        width: 101,
+        height: 83
+    }
+}
+
 // Enemies our player must avoid
-var Enemy = function(initY, speed) {
+var Enemy = function(initTileY, speed) {
     // Variables applied to each of our instances go here,
     // we've provided one for you to get started
-    this.y = initY;
+    this.tileY = initTileY;
+    this.yOffset = 60;
+    this.y = MAP.tile.height * this.tileY + this.yOffset;
     this.x = 0;
+    this.width = 50;
     this.speed = speed;
 
     // The image/sprite for our enemies, this uses
@@ -31,11 +46,14 @@ Enemy.prototype.render = function() {
 // Now write your own player class
 // This class requires an update(), render() and
 // a handleInput() method.
-var Player = function() {
-    this.x = 200;
-    this.y = 450;
-    this.moveDist = 50;
-    this.sprite = "images/char-boy.png"
+var Player = function(tileX, tileY) {
+    this.xOffset = 0;
+    this.yOffset = 60;
+    this.tileX = tileX;
+    this.tileY = tileY;
+    this.width = 50;
+    this.update();
+    this.sprite = "images/char-boy.png";
 };
 
 Player.prototype.render = function() {
@@ -43,11 +61,50 @@ Player.prototype.render = function() {
 };
 
 Player.prototype.update = function() {
-    //TODO: implement this
+    if (this.tileY < MAP.minYTile) {
+        // WINNER!
+        this.reset();
+    } else {
+        this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
+        this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
+        this.x = MAP.tile.width * this.tileX + this.xOffset;
+        this.y = MAP.tile.height * this.tileY + this.yOffset;
+    }
+    if (this.collides()) {
+        // LOSER!
+        this.reset();
+    }
 };
 
+Player.prototype.collides = function() {
+    var plr = this;
+    return allEnemies.some(function(enemy) {
+        if (enemy.x >= plr.x - (plr.width + enemy.width) / 2) {
+            if (enemy.x <= plr.x + (plr.width + enemy.width) / 2) {
+                var collideX = true;
+            } else {
+                var collideX = false;
+            }
+        } else {
+            var collideX = false;
+        }
+        var collideY = enemy.tileY == plr.tileY;
+        if (collideX && collideY){
+            return true;
+        } else {
+            return false;
+        }
+    })
+}
+
+
+Player.prototype.reset = function() {
+    this.tileX = 2;
+    this.tileY = 4;
+    this.update()
+}
+
 Player.prototype.handleInput = function(key) {
-    var moveDist = 50;
     switch (key) {
         case "left":
             this.moveLeft();
@@ -64,31 +121,23 @@ Player.prototype.handleInput = function(key) {
 };
 
 Player.prototype.moveLeft = function() {
-    var newX = this.x - 83;
-    if (newX > 0) {
-        this.x = newX;
-    }
+    this.tileX -= 1;
+    this.update();
 };
 
 Player.prototype.moveRight = function() {
-    var newX = this.x + 83;
-    if (newX < ctx.canvas.width) {
-        this.x = newX;
-    }
+    this.tileX += 1;
+    this.update();
 };
 
 Player.prototype.moveUp = function() {
-    var newY = this.y - 101;
-    if (newY > 0) {
-        this.y = newY;
-    }
+    this.tileY -= 1;
+    this.update;
 };
 
 Player.prototype.moveDown = function() {
-    var newY = this.y + 101;
-    if (newY < ctx.canvas.height) {
-        this.y = newY;
-    }
+    this.tileY += 1;
+    this.update;
 };
 
 
@@ -99,12 +148,12 @@ Player.prototype.moveDown = function() {
 // Place the player object in a variable called player
 //
 // TODO: add enemies to all enemies
-var allEnemies = [new Enemy(60, 100),
-                  new Enemy(140, 200),
-                  new Enemy(220, 200),
-                  new Enemy(60, 224),
-                  new Enemy(140, 41)];
-var player = new Player;
+var allEnemies = [new Enemy(0, 100),
+                  new Enemy(1, 200),
+                  new Enemy(2, 200),
+                  new Enemy(2, 224),
+                  new Enemy(1, 41)];
+var player = new Player(2, 4);
 
 
 // This listens for key presses and sends the keys to your
@@ -119,3 +168,8 @@ document.addEventListener('keyup', function(e) {
 
     player.handleInput(allowedKeys[e.keyCode]);
 });
+
+function clamp(number, min, max) {
+    // clamp number between min / max value
+    return number < min ? min : number > max ? max : number;
+}
