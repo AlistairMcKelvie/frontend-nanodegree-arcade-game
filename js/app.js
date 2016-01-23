@@ -5,8 +5,8 @@ var IMAGES = {
     stone: 'images/stone-block.png'
 };
 
-var MAP = {
-    rows: [
+var Map = function(){
+    this.rows = [
         IMAGES.water,
         IMAGES.stone,
         IMAGES.stone,
@@ -16,15 +16,19 @@ var MAP = {
         IMAGES.grass,
         IMAGES.grass
     ],
-    minXTile: 0,
-    maxXTile: 10,
-    minYTile: 0,
-    maxYTile: 7,
-    tile: {
+    this.minXTile = 0,
+    this.maxXTile = this.rows.length,
+    this.minYTile = 0,
+    this.maxYTile = 7,
+    this.tile = {
         width: 101,
         height: 83
     }
+    this.startX = Math.ceil(this.maxXTile / 2);
+    this.startY = this.maxYTile;
 };
+MAP = new Map();
+
 COLLISION_ON = true;
 
 // Enemies our player must avoid
@@ -92,7 +96,6 @@ Enemy.prototype.deathAnimate = function(dt) {
     }
 };
 
-
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function() {
     ctx.save();
@@ -147,9 +150,7 @@ Player.prototype.normalUpdate = function() {
         this.x = MAP.tile.width * this.tileX + this.xOffset;
         this.y = MAP.tile.height * this.tileY + this.yOffset;
     }
-    if (COLLISION_ON && !this.dead) {
-        this.collision();
-    }
+    this.collision();
 };
 
 Player.prototype.deathAnimate = function(dt) {
@@ -191,8 +192,8 @@ Player.prototype.collision = function() {
 
 Player.prototype.reset = function() {
     this.rot = 0;
-    this.tileX = 2;
-    this.tileY = 5;
+    this.tileX = MAP.startX;
+    this.tileY = MAP.startY;
     this.dead = false;
 }
 
@@ -241,7 +242,7 @@ Player.prototype.moveDown = function() {
 var allEnemies = [new Enemy(1, 100),
                   new Enemy(2, 200),
                   new Enemy(3, 250)]
-var player = new Player(5, MAP.maxYTile);
+var player = new Player(MAP.startX, MAP.startY);
 
 
 // This listens for key presses and sends the keys to your
