@@ -135,8 +135,15 @@ var Engine = (function(global) {
                 ctx.drawImage(Resources.get(rowImages[row]), col * MAP.tile.width, row * MAP.tile.height);
             }
         }
-
+        renderText()
         renderEntities();
+    }
+
+    function renderText() {
+        ctx.font = '40px serif';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = "#fff";
+        ctx.fillText("LIVES: " + player.lives, 15, MAP.tile.height * 0.8);
     }
 
     /* This function is called by the render function and is called on each game
