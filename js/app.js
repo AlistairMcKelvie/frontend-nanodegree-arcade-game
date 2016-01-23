@@ -1,9 +1,25 @@
-// Map dimensions
+// Map
+var IMAGES = {
+    water: 'images/water-block.png',
+    grass: 'images/grass-block.png',
+    stone: 'images/stone-block.png'
+};
+
 var MAP = {
+    rows: [
+        IMAGES.water,
+        IMAGES.stone,
+        IMAGES.stone,
+        IMAGES.stone,
+        IMAGES.stone,
+        IMAGES.stone,
+        IMAGES.grass,
+        IMAGES.grass
+    ],
     minXTile: 0,
-    maxXTile: 4,
+    maxXTile: 10,
     minYTile: 0,
-    maxYTile: 5,
+    maxYTile: 7,
     tile: {
         width: 101,
         height: 83
@@ -225,7 +241,7 @@ Player.prototype.moveDown = function() {
 var allEnemies = [new Enemy(1, 100),
                   new Enemy(2, 200),
                   new Enemy(3, 250)]
-var player = new Player(2, 5);
+var player = new Player(5, MAP.maxYTile);
 
 
 // This listens for key presses and sends the keys to your
