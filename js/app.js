@@ -27,36 +27,61 @@ var Map = function(){
     this.startX = Math.ceil(this.maxXTile / 2);
     this.startY = this.maxYTile;
 };
-MAP = new Map();
+var MAP = new Map;
 
 COLLISION_ON = true;
 
-// Enemies our player must avoid
-var Enemy = function(initTileY, dx) {
-    // Variables applied to each of our instances go here,
-    // we've provided one for you to get started
+var GameEntity = function(initTileX, initTileY) {
+    this.tileX = initTileX;
     this.tileY = initTileY;
+    this.xOffset = 0;
     this.yOffset = -30;
+    this.x = MAP.tile.height * this.tileX + this.xOffset;
     this.y = MAP.tile.height * this.tileY + this.yOffset;
-    this.x = 0;
     this.rotPtX = 50.5;
     this.rotPtY = 125;
     this.collisionWidth = 50;
+}
+GameEntity.prototype.render = function() {
+    ctx.save();
+    ctx.translate(this.x + this.rotPtX, this.y  + this.rotPtY);
+    ctx.rotate(this.rot);
+    ctx.drawImage(Resources.get(this.sprite), -this.rotPtX, -this.rotPtY);
+    ctx.restore();
+};
+
+
+// Enemies our player must avoid
+var Enemy = function(initTileX, initTileY) {
+    this.base = GameEntity;
+    this.base(initTileX, initTileY);
+}
+Enemy.prototype = new GameEntity;
+
+// Draw the enemy on the screen, required method for game
+
+var Bug = function(initTileY, dx) {
+    // Variables applied to each of our instances go here,
+    // we've provided one for you to get started
+    this.base = Enemy;
+    this.base(0, initTileY);
     this.dx = dx;
     this.dy = 0;
     this.targetSpeed = dx;
     this.acceleration = 0;
     this.dxChangeTimer = (Math.random()) * 3;
     this.dead = false;
+    this.deadly = true;
 
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
     this.sprite = "images/enemy-bug.png";
 };
+Bug.prototype = new Enemy;
 
 // Update the enemy's position, required method for game
 // Parameter: dt, a time delta between ticks
-Enemy.prototype.update = function(dt) {
+Bug.prototype.update = function(dt) {
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same dx for
     // all computers.
@@ -67,7 +92,7 @@ Enemy.prototype.update = function(dt) {
     }
 };
 
-Enemy.prototype.normalUpdate = function(dt) {
+Bug.prototype.normalUpdate = function(dt) {
     this.dxChangeTimer -= dt;
     if (this.dxChangeTimer <= 0) {
         if (this.targetSpeed == 0) {
@@ -85,7 +110,7 @@ Enemy.prototype.normalUpdate = function(dt) {
     }
 }
 
-Enemy.prototype.deathAnimate = function(dt) {
+Bug.prototype.deathAnimate = function(dt) {
     // only animate if it's on screen
     if (this.x > -100) {
         this.deathTimer += dt;
@@ -96,40 +121,21 @@ Enemy.prototype.deathAnimate = function(dt) {
     }
 };
 
-// Draw the enemy on the screen, required method for game
-Enemy.prototype.render = function() {
-    ctx.save();
-    ctx.translate(this.x + this.rotPtX, this.y  + this.rotPtY);
-    ctx.rotate(this.rot);
-    ctx.drawImage(Resources.get(this.sprite), -this.rotPtX, -this.rotPtY);
-    ctx.restore();
-};
 
 // Now write your own player class
 // This class requires an update(), render() and
 // a handleInput() method.
-var Player = function(tileX, tileY) {
-    this.xOffset = 0;
-    this.yOffset = -30;
-    this.tileX = tileX;
-    this.tileY = tileY;
-    this.rotPtX = 50.5;
-    this.rotPtY = 125;
-    this.collisionWidth = 50;
+var Player = function(initTileX, initTileY) {
+    this.base = GameEntity;
+    this.base(initTileX, initTileY);
+    this.collided = false;
     this.dead = false;
     this.rot = 0;
     this.sprite = "images/char-boy.png";
     this.lives = 3;
+    this.currentCollions = [];
 };
-
-DEATH_TIMER = 0;
-Player.prototype.render = function() {
-    ctx.save();
-    ctx.translate(this.x + this.rotPtX, this.y  + this.rotPtY);
-    ctx.rotate(this.rot);
-    ctx.drawImage(Resources.get(this.sprite), -this.rotPtX, -this.rotPtY);
-    ctx.restore();
-};
+Player.prototype = new GameEntity;
 
 Player.prototype.update = function(dt) {
     if (this.dead == true) {
@@ -147,10 +153,14 @@ Player.prototype.normalUpdate = function() {
     } else {
         this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
         this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
+        // save this pos may have to go back to it after collision
+        var oldX = this.x;
+        var oldY = this.y;
         this.x = MAP.tile.width * this.tileX + this.xOffset;
         this.y = MAP.tile.height * this.tileY + this.yOffset;
     }
     this.collision();
+
 };
 
 Player.prototype.deathAnimate = function(dt) {
@@ -180,6 +190,8 @@ Player.prototype.collision = function() {
         }
         var collideY = enemy.tileY == plr.tileY;
         if (collideX && collideY){
+            plr.collieded = true;
+            plr.colliededWith = enemy
             plr.dead = true;
             plr.deathTimer = 0;
             plr.lives--;
@@ -239,9 +251,9 @@ Player.prototype.moveDown = function() {
 // Place the player object in a variable called player
 //
 // TODO: add enemies to all enemies
-var allEnemies = [new Enemy(1, 100),
-                  new Enemy(2, 200),
-                  new Enemy(3, 250)]
+var allEnemies = [new Bug(1, 100),
+                  new Bug(2, 200),
+                  new Bug(3, 250)]
 var player = new Player(MAP.startX, MAP.startY);
 
 
