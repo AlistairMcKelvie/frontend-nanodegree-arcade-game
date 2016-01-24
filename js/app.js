@@ -29,7 +29,7 @@ var Map = function(){
 };
 var MAP = new Map;
 
-COLLISION_ON = true;
+COLLISION_ON = false;
 
 var GameEntity = function(initTileX, initTileY) {
     this.tileX = initTileX;
@@ -172,7 +172,7 @@ Player.prototype.update = function(dt) {
 Player.prototype.normalUpdate = function() {
     if (this.tileY <= MAP.minYTile) {
         // WINNER!
-        this.reset();
+        VictorySequence();
     } else {
         this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
         this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
@@ -219,7 +219,7 @@ Player.prototype.collision = function() {
             var collideX = false;
         }
         var collideY = enemy.tileY == plr.tileY;
-        if (collideX && collideY){
+        if (collideX && collideY && COLLISION_ON){
             plr.collided = true;
             if (enemy.deadly) {
                 plr.dead = true;
@@ -307,7 +307,6 @@ rockRows.forEach(function(row) {
 });
 
 
-
 var player = new Player(MAP.startX, MAP.startY);
 
 
@@ -323,6 +322,40 @@ document.addEventListener('keyup', function(e) {
 
     player.handleInput(allowedKeys[e.keyCode]);
 });
+
+var VictorySequence = function() {
+    screenText.displayVictory = true;
+    screenText.victoryCounter = 0;
+}
+
+var ScreenText = function() {
+    this.displayScore = true;
+    this.displayVictory = false;
+    this.victoryCounter = 0;
+};
+
+ScreenText.prototype.update = function(dt) {
+    this.victoryCounter += dt;
+    if (this.victoryCounter > 5) {
+        this.displayVictory = false;
+    }
+}
+
+ScreenText.prototype.render = function() {
+    if (this.displayScore) {
+        ctx.font = '40px serif';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
+    }
+    if (this.displayVictory) {
+        ctx.font = '120px san-serif';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#ff0';
+        ctx.fillText('WINNER', MAP.tile.width * MAP.maxXTile * 0.3, MAP.tile.height * MAP.maxYTile * 0.5);
+    }
+};
+var screenText = new ScreenText;
 
 function clamp(number, min, max) {
     // clamp number between min / max value
