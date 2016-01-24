@@ -160,7 +160,14 @@ Player.prototype.normalUpdate = function() {
         this.y = MAP.tile.height * this.tileY + this.yOffset;
     }
     this.collision();
-
+    if (player.collided) {
+        // deny move and go back last pos
+        this.x = oldX;
+        this.y = oldY;
+        this.tileX = (this.x - this.xOffset) / MAP.tile.width;
+        this.tileY = (this.y - this.yOffset) / MAP.tile.height;
+        this.collided = false;
+    }
 };
 
 Player.prototype.deathAnimate = function(dt) {
@@ -190,11 +197,12 @@ Player.prototype.collision = function() {
         }
         var collideY = enemy.tileY == plr.tileY;
         if (collideX && collideY){
-            plr.collieded = true;
-            plr.colliededWith = enemy
-            plr.dead = true;
-            plr.deathTimer = 0;
-            plr.lives--;
+            plr.collided = true;
+            if (enemy.deadly) {
+                plr.dead = true;
+                plr.deathTimer = 0;
+                plr.lives--;
+            }
             enemy.dead = true;
             enemy.deathTimer = 0;
             enemy.dx = -enemy.dx;
