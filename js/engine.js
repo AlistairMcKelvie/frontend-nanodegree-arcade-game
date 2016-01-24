@@ -25,6 +25,7 @@ var Engine = (function(global) {
         ctx = canvas.getContext('2d'),
         lastTime;
 
+
     canvas.width = MAP.tile.width * (MAP.maxXTile + 1);
     canvas.height = MAP.tile.height * (MAP.maxYTile + 3);
     doc.body.appendChild(canvas);
@@ -171,7 +172,8 @@ var Engine = (function(global) {
         'images/water-block.png',
         'images/grass-block.png',
         'images/enemy-bug.png',
-        'images/char-boy.png'
+        'images/char-boy.png',
+        'images/Rock.png'
     ]);
     Resources.onReady(init);
 

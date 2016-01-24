@@ -36,7 +36,7 @@ var GameEntity = function(initTileX, initTileY) {
     this.tileY = initTileY;
     this.xOffset = 0;
     this.yOffset = -30;
-    this.x = MAP.tile.height * this.tileX + this.xOffset;
+    this.x = MAP.tile.width * this.tileX + this.xOffset;
     this.y = MAP.tile.height * this.tileY + this.yOffset;
     this.rotPtX = 50.5;
     this.rotPtY = 125;
@@ -60,27 +60,25 @@ var Enemy = function(initTileX, initTileY) {
 }
 Enemy.prototype = new GameEntity;
 
-Enemy.prototype.collide = function() {
-    // Do nothing
-}
 
 // Draw the enemy on the screen, required method for game
 
-var Bug = function(initTileY, dx) {
+var Bug = function(initTileX, initTileY) {
     // Variables applied to each of our instances go here,
     // we've provided one for you to get started
     this.base = Enemy;
-    this.base(0, initTileY);
-    this.dx = dx;
+    this.base(initTileX, initTileY);
+    this.dx = 0;
     this.dy = 0;
-    this.targetSpeed = dx;
+    this.speed = Math.random() * 700;
+    this.targetSpeed = this.speed;
     this.acceleration = 0;
     this.dxChangeTimer = (Math.random()) * 3;
     this.deadly = true;
 
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
-    this.sprite = "images/enemy-bug.png";
+    this.sprite = 'images/enemy-bug.png';
 };
 Bug.prototype = new Enemy;
 
@@ -132,6 +130,21 @@ Bug.prototype.collide = function() {
     this.dx = -this.dx;
 }
 
+var Rock = function(initTileX, initTileY) {
+    this.base = Enemy;
+    this.base(initTileX, initTileY);
+    this.deadly = false;
+    this.sprite = 'images/Rock.png';
+}
+Rock.prototype = new Enemy;
+
+Rock.prototype.update = function() {
+    // do nothing
+};
+
+Rock.prototype.collide = function() {
+    // do nothing
+};
 
 // Now write your own player class
 // This class requires an update(), render() and
@@ -266,9 +279,35 @@ Player.prototype.moveDown = function() {
 // Place the player object in a variable called player
 //
 // TODO: add enemies to all enemies
-var allEnemies = [new Bug(1, 100),
-                  new Bug(2, 200),
-                  new Bug(3, 250)]
+var allEnemies = []
+// Generate random enemies
+var bugRows = [1, 3, 5];
+bugRows.forEach(function(row) {
+    var bugCount = randomInt(2, 5);
+    for (var i = 0; i < bugCount; i++) {
+        allEnemies.push(new Bug(randomInt(MAP.minXTile, MAP.maxXTile), row));
+    }
+});
+
+var rockRows = [2, 4];
+rockRows.forEach(function(row) {
+    var filledCols = new Set();
+    var rockCount = randomInt(7, 8);
+    var i = 0;
+    while (i < rockCount) {
+        var col = randomInt(MAP.minXTile, MAP.maxXTile);
+        if (filledCols.has(col)) {
+           // rock already there, try again
+        } else {
+            allEnemies.push(new Rock(col, row));
+            filledCols.add(col);
+            i++;
+        }
+    }
+});
+
+
+
 var player = new Player(MAP.startX, MAP.startY);
 
 
@@ -288,4 +327,9 @@ document.addEventListener('keyup', function(e) {
 function clamp(number, min, max) {
     // clamp number between min / max value
     return number < min ? min : number > max ? max : number;
+}
+
+function randomInt(lower, upper) {
+    //generates a random int between lower & upper (both inclusive)
+    return Math.floor(Math.random() * (upper - lower + 1) + lower);
 }
