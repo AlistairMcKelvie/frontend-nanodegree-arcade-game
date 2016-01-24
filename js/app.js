@@ -41,7 +41,9 @@ var GameEntity = function(initTileX, initTileY) {
     this.rotPtX = 50.5;
     this.rotPtY = 125;
     this.collisionWidth = 50;
+    this.dead = false;
 }
+
 GameEntity.prototype.render = function() {
     ctx.save();
     ctx.translate(this.x + this.rotPtX, this.y  + this.rotPtY);
@@ -58,6 +60,10 @@ var Enemy = function(initTileX, initTileY) {
 }
 Enemy.prototype = new GameEntity;
 
+Enemy.prototype.collide = function() {
+    // Do nothing
+}
+
 // Draw the enemy on the screen, required method for game
 
 var Bug = function(initTileY, dx) {
@@ -70,7 +76,6 @@ var Bug = function(initTileY, dx) {
     this.targetSpeed = dx;
     this.acceleration = 0;
     this.dxChangeTimer = (Math.random()) * 3;
-    this.dead = false;
     this.deadly = true;
 
     // The image/sprite for our enemies, this uses
@@ -121,6 +126,12 @@ Bug.prototype.deathAnimate = function(dt) {
     }
 };
 
+Bug.prototype.collide = function() {
+    this.dead = true;
+    this.deathTimer = 0;
+    this.dx = -this.dx;
+}
+
 
 // Now write your own player class
 // This class requires an update(), render() and
@@ -129,7 +140,6 @@ var Player = function(initTileX, initTileY) {
     this.base = GameEntity;
     this.base(initTileX, initTileY);
     this.collided = false;
-    this.dead = false;
     this.rot = 0;
     this.sprite = "images/char-boy.png";
     this.lives = 3;
@@ -203,9 +213,7 @@ Player.prototype.collision = function() {
                 plr.deathTimer = 0;
                 plr.lives--;
             }
-            enemy.dead = true;
-            enemy.deathTimer = 0;
-            enemy.dx = -enemy.dx;
+            enemy.collide();
         }
     })
 }
@@ -252,7 +260,6 @@ Player.prototype.moveDown = function() {
     this.tileY += 1;
     console.log('player xy: ' + this.x + ', ' + this.y);
 };
-
 
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
