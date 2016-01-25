@@ -165,6 +165,7 @@ var Player = function(initTileX, initTileY) {
     this.lives = 3;
     this.currentCollions = [];
     this.jumping = false;
+    this.respawning = false;
 };
 Player.prototype = new GameEntity;
 
@@ -174,8 +175,10 @@ Player.prototype.update = function(dt) {
             this.introAnimate(dt);
             break;
         case GameStatesEnum.NORMAL:
-            if (this.dead == true) {
+            if (this.dead) {
                 this.deathAnimate(dt);
+            } else if (this.respawning) {
+                this.respawnAnimate(dt);
             } else {
                 this.normalUpdate();
             }
@@ -217,7 +220,8 @@ Player.prototype.introAnimate = function(dt) {
         // Made it to destination
         this.tileX = MAP.startX;
         this.tileY = MAP.startY;
-        gameState.state = GameStatesEnum.NORMAL
+        gameState.state = GameStatesEnum.NORMAL;
+        this.jump = false;
     } else if (this.jump.finished) {
         // Update tile values
         this.tileX = this.jump.destXTile;
@@ -242,11 +246,28 @@ Player.prototype.deathAnimate = function(dt) {
     this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
         // Death anim complete
-        this.reset();
-        // Update these now or now or render gets called before normal
-        // update and draws with updated rotation but not updated pos
-        this.x = MAP.tile.width * this.tileX + this.xOffset;
-        this.y = MAP.tile.height * this.tileY + this.yOffset;
+        this.rot = 0;
+        this.dead = false;
+        this.respawning = true;
+    }
+};
+
+Player.prototype.respawnAnimate = function(dt) {
+    if (!this.jump) {
+        // Start first jump
+        this.jump = new Jump(this.tileX, this.tileY, MAP.startX, MAP.startY);
+    } else if (this.y >= MAP.startY * MAP.tile.height + this.yOffset) {
+        // Made it to destination
+        this.tileX = MAP.startX;
+        this.tileY = MAP.startY;
+        gameState.state = GameStatesEnum.NORMAL;
+        this.respawning = false;
+        this.jump = false;
+    } else {
+        // normal jump update
+        this.jump.update(dt);
+        this.x += this.jump.xUpdateVal;
+        this.y += this.jump.yUpdateVal;
     }
 };
 
@@ -276,13 +297,6 @@ Player.prototype.collision = function() {
             enemy.collide();
         }
     })
-};
-
-Player.prototype.reset = function() {
-    this.rot = 0;
-    this.tileX = MAP.startX;
-    this.tileY = MAP.startY;
-    this.dead = false;
 };
 
 Player.prototype.handleInput = function(key) {
@@ -327,10 +341,10 @@ var Jump = function(startXTile, startYTile, destXTile, destYTile) {
     this.xProgress = 0;
     this.yProgress = 0;
     this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
-    this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
+    this.destYOffset = -(destYTile - startYTile) * MAP.tile.height;
     this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
     this.jumpHeight = this.jumpDist;
-    this.speed = 150;
+    this.speed = 300;
     this.dx = this.speed * this.destXOffset / this.jumpDist;
     this.dy = this.speed * this.destYOffset / this.jumpDist;
     this.finished = false;
@@ -341,9 +355,10 @@ Jump.prototype.update = function(dt) {
     // jump dz = (4h/d)(1 - 2x/d)
     var newXProg = this.xProgress + this.dx * dt;
     var newYProg = this.yProgress + this.dy * dt;
-    dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * newXProg / this.jumpDist);
+    var prog = Math.sqrt(Math.pow(newXProg, 2) + Math.pow(newYProg, 2));
+    dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * prog / this.jumpDist);
     this.xUpdateVal = newXProg - this.xProgress;
-    this.yUpdateVal = newYProg - this.yProgress - dz;
+    this.yUpdateVal = -(newYProg - this.yProgress + dz);
     this.xProgress = newXProg;
     this.yProgress = newYProg;
     if (this.xProgress >= this.destXOffset && this.yProgress >= this.destYOffset) {
