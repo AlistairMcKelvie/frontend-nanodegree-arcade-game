@@ -32,7 +32,8 @@ var MAP = new Map;
 var GameStatesEnum = {
     INTRO: 1,
     NORMAL: 2,
-    VICTORY: 3
+    VICTORY: 3,
+    LOSE: 4
 };
 
 COLLISION_ON = false;
@@ -265,6 +266,9 @@ Player.prototype.collision = function() {
                 plr.dead = true;
                 plr.deathTimer = 0;
                 plr.lives--;
+                if (plr.lives <= 0) {
+                    gameState.state = GameStatesEnum.LOSE;
+                }
             }
             enemy.collide();
         }
