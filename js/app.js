@@ -336,36 +336,39 @@ Player.prototype.moveDown = function() {
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
 //
-// TODO: add enemies to all enemies
 var allEnemies = []
-// Generate random enemies
-var bugRows = [1, 3, 5];
-bugRows.forEach(function(row) {
-    var bugCount = randomInt(2, 5);
-    for (var i = 0; i < bugCount; i++) {
-        allEnemies.push(new Bug(randomInt(MAP.minXTile, MAP.maxXTile), row));
-    }
-});
-
-var rockRows = [2, 4];
-rockRows.forEach(function(row) {
-    var filledCols = new Set();
-    var rockCount = randomInt(7, 8);
-    var i = 0;
-    while (i < rockCount) {
-        var col = randomInt(MAP.minXTile, MAP.maxXTile);
-        if (filledCols.has(col)) {
-           // rock already there, try again
-        } else {
-            allEnemies.push(new Rock(col, row));
-            filledCols.add(col);
-            i++;
+var player;
+var startGame = function() {
+    // Generate random enemies
+    var bugRows = [1, 3, 5];
+    bugRows.forEach(function(row) {
+        var bugCount = randomInt(2, 5);
+        for (var i = 0; i < bugCount; i++) {
+            allEnemies.push(new Bug(randomInt(MAP.minXTile, MAP.maxXTile), row));
         }
-    }
-});
+    });
 
+    var rockRows = [2, 4];
+    rockRows.forEach(function(row) {
+        var filledCols = new Set();
+        var rockCount = randomInt(7, 8);
+        var i = 0;
+        while (i < rockCount) {
+            var col = randomInt(MAP.minXTile, MAP.maxXTile);
+            if (filledCols.has(col)) {
+               // rock already there, try again
+            } else {
+                allEnemies.push(new Rock(col, row));
+                filledCols.add(col);
+                i++;
+            }
+        }
+    });
 
-var player = new Player(MAP.minXTile - 1, MAP.maxYTile);
+    // create player
+    player = new Player(MAP.minXTile - 1, MAP.maxYTile);
+};
+startGame();
 
 
 // This listens for key presses and sends the keys to your
