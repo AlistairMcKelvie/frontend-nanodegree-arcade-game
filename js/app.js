@@ -157,11 +157,16 @@ var Player = function(initTileX, initTileY) {
     this.sprite = "images/char-boy.png";
     this.lives = 3;
     this.currentCollions = [];
+    this.doingIntroAnim = true;
+    this.doingIntroAnim = true;
+    this.jumping = false;
 };
 Player.prototype = new GameEntity;
 
 Player.prototype.update = function(dt) {
-    if (this.dead == true) {
+    if (this.doingIntroAnim == true) {
+        this.introAnimate(dt);
+    } else if (this.dead == true) {
         this.deathAnimate(dt);
     } else {
         this.normalUpdate();
@@ -170,33 +175,86 @@ Player.prototype.update = function(dt) {
 };
 
 Player.prototype.normalUpdate = function() {
-    if (this.tileY <= MAP.minYTile) {
-        // WINNER!
-        VictorySequence();
-    } else {
-        this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
-        this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
-        // save this pos may have to go back to it after collision
-        var oldX = this.x;
-        var oldY = this.y;
-        this.x = MAP.tile.width * this.tileX + this.xOffset;
-        this.y = MAP.tile.height * this.tileY + this.yOffset;
-    }
-    this.collision();
-    if (player.collided) {
-        // deny move and go back last pos
-        this.x = oldX;
-        this.y = oldY;
-        this.tileX = (this.x - this.xOffset) / MAP.tile.width;
-        this.tileY = (this.y - this.yOffset) / MAP.tile.height;
-        this.collided = false;
-    }
-};
+        if (this.tileY <= MAP.minYTile) {
+            // WINNER!
+            VictorySequence();
+        } else {
+            this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
+            this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
+            // save this pos may have to go back to it after collision
+            var oldX = this.x;
+            var oldY = this.y;
+            this.x = MAP.tile.width * this.tileX + this.xOffset;
+            this.y = MAP.tile.height * this.tileY + this.yOffset;
+        }
+        this.collision();
+        if (player.collided) {
+            // deny move and go back last pos
+            this.x = oldX;
+            this.y = oldY;
+            this.tileX = (this.x - this.xOffset) / MAP.tile.width;
+            this.tileY = (this.y - this.yOffset) / MAP.tile.height;
+            this.collided = false;
+        }
+    };
 
-Player.prototype.deathAnimate = function(dt) {
-    this.deathTimer += dt;
-    this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
-    if (this.deathTimer > 1.3) {
+    var Jump = function(startXTile, startYTile, destXTile, destYTile) {
+        this.xProgress = 0;
+        this.yProgress = 0;
+        this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
+        this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
+        this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
+        this.jumpHeight = this.jumpDist / 1;
+        this.speed = 150;
+        this.dx = this.speed * this.destXOffset / this.jumpDist;
+        this.dy = this.speed * this.destYOffset / this.jumpDist;
+        this.finished = false;
+    }
+
+    Jump.prototype.update = function(dt) {
+        // jump eqn z = (4h/d)(x - (x^2)/d)
+        // jump zy = (4h/d)(1 - 2x/d)
+        var newXProg = this.xProgress + this.dx * dt;
+        var newYProg = this.yProgress + this.dy * dt;
+        dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * newXProg / this.jumpDist);
+        console.log(newXProg);
+        console.log(newYProg);
+        console.log(dz);
+        console.log('----------');
+        this.xUpdateVal = newXProg - this.xProgress;
+        this.yUpdateVal = newYProg - this.yProgress - dz;
+        this.xProgress = newXProg;
+        this.yProgress = newYProg;
+        if (this.xProgress >= this.destXOffset && this.yProgress >= this.destYOffset) {
+            this.finished = true;
+        }
+    };
+
+
+    Player.prototype.introAnimate = function(dt) {
+        if (this.x >= MAP.startX * MAP.tile.width + this.xOffset) {
+            // Made it to start location
+            this.tileX = MAP.startX;
+            this.tileY = MAP.startY;
+            this.doingIntroAnim = false;
+        } else if (!this.jump || this.jump.finished == true) {
+            // Start a new jump
+            this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
+            this.jump.update(dt);
+            this.x += this.jump.xUpdateVal;
+            this.y += this.jump.yUpdateVal;
+            this.jumping = true;
+        } else {
+            this.jump.update(dt);
+            this.x += this.jump.xUpdateVal;
+            this.y += this.jump.yUpdateVal;
+        }
+    };
+
+    Player.prototype.deathAnimate = function(dt) {
+        this.deathTimer += dt;
+        this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
+        if (this.deathTimer > 1.3) {
         // Death anim complete
         this.reset();
         // Update these now or now or render gets called before normal
@@ -307,7 +365,7 @@ rockRows.forEach(function(row) {
 });
 
 
-var player = new Player(MAP.startX, MAP.startY);
+var player = new Player(MAP.minXTile - 1, MAP.maxYTile);
 
 
 // This listens for key presses and sends the keys to your
