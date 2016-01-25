@@ -29,6 +29,12 @@ var Map = function(){
 };
 var MAP = new Map;
 
+var GameStatesEnum = {
+    INTRO: 1,
+    NORMAL: 2,
+    VICTORY: 3
+};
+
 COLLISION_ON = false;
 
 var GameEntity = function(initTileX, initTileY) {
@@ -157,104 +163,80 @@ var Player = function(initTileX, initTileY) {
     this.sprite = "images/char-boy.png";
     this.lives = 3;
     this.currentCollions = [];
-    this.doingIntroAnim = true;
-    this.doingIntroAnim = true;
     this.jumping = false;
 };
 Player.prototype = new GameEntity;
 
 Player.prototype.update = function(dt) {
-    if (this.doingIntroAnim == true) {
-        this.introAnimate(dt);
-    } else if (this.dead == true) {
-        this.deathAnimate(dt);
-    } else {
-        this.normalUpdate();
+    switch (gameState.state) {
+        case GameStatesEnum.INTRO:
+            this.introAnimate(dt);
+            break;
+        case GameStatesEnum.NORMAL:
+            if (this.dead == true) {
+                this.deathAnimate(dt);
+            } else {
+                this.normalUpdate();
+            }
     }
     //console.log('x: ' + this.tileX + ', y: ' + this.tileY + ', rot: ' + this.rot / Math.PI + 'pi');
 };
 
 Player.prototype.normalUpdate = function() {
-        if (this.tileY <= MAP.minYTile) {
-            // WINNER!
-            VictorySequence();
-        } else {
-            this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
-            this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
-            // save this pos may have to go back to it after collision
-            var oldX = this.x;
-            var oldY = this.y;
-            this.x = MAP.tile.width * this.tileX + this.xOffset;
-            this.y = MAP.tile.height * this.tileY + this.yOffset;
-        }
-        this.collision();
-        if (player.collided) {
-            // deny move and go back last pos
-            this.x = oldX;
-            this.y = oldY;
-            this.tileX = (this.x - this.xOffset) / MAP.tile.width;
-            this.tileY = (this.y - this.yOffset) / MAP.tile.height;
-            this.collided = false;
-        }
-    };
-
-    var Jump = function(startXTile, startYTile, destXTile, destYTile) {
-        this.xProgress = 0;
-        this.yProgress = 0;
-        this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
-        this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
-        this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
-        this.jumpHeight = this.jumpDist / 1;
-        this.speed = 150;
-        this.dx = this.speed * this.destXOffset / this.jumpDist;
-        this.dy = this.speed * this.destYOffset / this.jumpDist;
-        this.finished = false;
+    this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
+    this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
+    // save this pos may have to go back to it after collision
+    var oldX = this.x;
+    var oldY = this.y;
+    this.x = MAP.tile.width * this.tileX + this.xOffset;
+    this.y = MAP.tile.height * this.tileY + this.yOffset;
+    if (this.tileY <= MAP.minYTile) {
+        // WINNER!
+        gameState.state = GameStatesEnum.VICTORY;
     }
+    this.collision();
+    if (player.collided) {
+        // deny move and go back last pos
+        this.x = oldX;
+        this.y = oldY;
+        this.tileX = (this.x - this.xOffset) / MAP.tile.width;
+        this.tileY = (this.y - this.yOffset) / MAP.tile.height;
+        this.collided = false;
+    }
+};
 
-    Jump.prototype.update = function(dt) {
-        // jump eqn z = (4h/d)(x - (x^2)/d)
-        // jump zy = (4h/d)(1 - 2x/d)
-        var newXProg = this.xProgress + this.dx * dt;
-        var newYProg = this.yProgress + this.dy * dt;
-        dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * newXProg / this.jumpDist);
-        console.log(newXProg);
-        console.log(newYProg);
-        console.log(dz);
-        console.log('----------');
-        this.xUpdateVal = newXProg - this.xProgress;
-        this.yUpdateVal = newYProg - this.yProgress - dz;
-        this.xProgress = newXProg;
-        this.yProgress = newYProg;
-        if (this.xProgress >= this.destXOffset && this.yProgress >= this.destYOffset) {
-            this.finished = true;
-        }
-    };
+Player.prototype.introAnimate = function(dt) {
+    if (!this.jump) {
+        // Start first jump
+        this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
+    } else if (this.x >= MAP.startX * MAP.tile.width + this.xOffset) {
+        // Made it to destination
+        this.tileX = MAP.startX;
+        this.tileY = MAP.startY;
+        gameState.state = GameStatesEnum.NORMAL
+    } else if (this.jump.finished) {
+        // Update tile values
+        this.tileX = this.jump.destXTile;
+        this.tileY = this.jump.destYTile;
+        this.x = MAP.tile.width * this.tileX + this.xOffset;
+        this.y = MAP.tile.height * this.tileY + this.yOffset;
+        // Start a new jump
+        this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
+        this.jump.update(dt);
+        this.x += this.jump.xUpdateVal;
+        this.y += this.jump.yUpdateVal;
+    } else {
+        // normal jump update
+        this.jump.update(dt);
+        this.x += this.jump.xUpdateVal;
+        this.y += this.jump.yUpdateVal;
+    }
+};
 
-
-    Player.prototype.introAnimate = function(dt) {
-        if (this.x >= MAP.startX * MAP.tile.width + this.xOffset) {
-            // Made it to start location
-            this.tileX = MAP.startX;
-            this.tileY = MAP.startY;
-            this.doingIntroAnim = false;
-        } else if (!this.jump || this.jump.finished == true) {
-            // Start a new jump
-            this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
-            this.jump.update(dt);
-            this.x += this.jump.xUpdateVal;
-            this.y += this.jump.yUpdateVal;
-            this.jumping = true;
-        } else {
-            this.jump.update(dt);
-            this.x += this.jump.xUpdateVal;
-            this.y += this.jump.yUpdateVal;
-        }
-    };
-
-    Player.prototype.deathAnimate = function(dt) {
-        this.deathTimer += dt;
-        this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
-        if (this.deathTimer > 1.3) {
+Player.prototype.deathAnimate = function(dt) {
+    this.deathTimer += dt;
+    this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
+    if (this.deathTimer > 1.3) {
         // Death anim complete
         this.reset();
         // Update these now or now or render gets called before normal
@@ -287,14 +269,14 @@ Player.prototype.collision = function() {
             enemy.collide();
         }
     })
-}
+};
 
 Player.prototype.reset = function() {
     this.rot = 0;
     this.tileX = MAP.startX;
     this.tileY = MAP.startY;
     this.dead = false;
-}
+};
 
 Player.prototype.handleInput = function(key) {
     switch (key) {
@@ -332,14 +314,59 @@ Player.prototype.moveDown = function() {
     console.log('player xy: ' + this.x + ', ' + this.y);
 };
 
+var Jump = function(startXTile, startYTile, destXTile, destYTile) {
+    this.destXTile = destXTile;
+    this.destYTile = destYTile;
+    this.xProgress = 0;
+    this.yProgress = 0;
+    this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
+    this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
+    this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
+    this.jumpHeight = this.jumpDist;
+    this.speed = 150;
+    this.dx = this.speed * this.destXOffset / this.jumpDist;
+    this.dy = this.speed * this.destYOffset / this.jumpDist;
+    this.finished = false;
+};
+
+Jump.prototype.update = function(dt) {
+    // jump eqn z = (4h/d)(x - (x^2)/d)
+    // jump dz = (4h/d)(1 - 2x/d)
+    var newXProg = this.xProgress + this.dx * dt;
+    var newYProg = this.yProgress + this.dy * dt;
+    dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * newXProg / this.jumpDist);
+    this.xUpdateVal = newXProg - this.xProgress;
+    this.yUpdateVal = newYProg - this.yProgress - dz;
+    this.xProgress = newXProg;
+    this.yProgress = newYProg;
+    if (this.xProgress >= this.destXOffset && this.yProgress >= this.destYOffset) {
+        this.finished = true;
+    }
+};
+
 // Now instantiate your objects.
 // Place all enemy objects in an array called allEnemies
 // Place the player object in a variable called player
 //
-var allEnemies = []
+var allEnemies;
 var player;
-var startGame = function() {
+var GameState = function() {
+    this.state = GameStatesEnum.INTRO;
+    this.victoryCounter = 0;
+};
+
+GameState.prototype.update = function(dt) {
+    if (this.state == GameStatesEnum.VICTORY) {
+        this.victoryCounter += dt;
+        if (this.victoryCounter > 5) {
+            newGame();
+        }
+    }
+};
+
+var newGame = function() {
     // Generate random enemies
+    allEnemies = [];
     var bugRows = [1, 3, 5];
     bugRows.forEach(function(row) {
         var bugCount = randomInt(2, 5);
@@ -367,8 +394,10 @@ var startGame = function() {
 
     // create player
     player = new Player(MAP.minXTile - 1, MAP.maxYTile);
+
+    gameState = new GameState();
 };
-startGame();
+newGame();
 
 
 // This listens for key presses and sends the keys to your
@@ -384,32 +413,15 @@ document.addEventListener('keyup', function(e) {
     player.handleInput(allowedKeys[e.keyCode]);
 });
 
-var VictorySequence = function() {
-    screenText.displayVictory = true;
-    screenText.victoryCounter = 0;
-}
-
 var ScreenText = function() {
-    this.displayScore = true;
-    this.displayVictory = false;
-    this.victoryCounter = 0;
 };
 
-ScreenText.prototype.update = function(dt) {
-    this.victoryCounter += dt;
-    if (this.victoryCounter > 5) {
-        this.displayVictory = false;
-    }
-}
-
 ScreenText.prototype.render = function() {
-    if (this.displayScore) {
-        ctx.font = '40px serif';
-        ctx.textBaseline = 'top';
-        ctx.fillStyle = '#fff';
-        ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
-    }
-    if (this.displayVictory) {
+    ctx.font = '40px serif';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
+    if (gameState.state == GameStatesEnum.VICTORY) {
         ctx.font = '120px san-serif';
         ctx.textBaseline = 'top';
         ctx.fillStyle = '#ff0';
