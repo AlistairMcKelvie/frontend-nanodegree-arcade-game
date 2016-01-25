@@ -36,7 +36,7 @@ var GameStatesEnum = {
     LOSE: 4
 };
 
-COLLISION_ON = false;
+COLLISION_ON = true;
 
 var GameEntity = function(initTileX, initTileY) {
     this.tileX = initTileX;
@@ -179,6 +179,9 @@ Player.prototype.update = function(dt) {
             } else {
                 this.normalUpdate();
             }
+            break;
+        case GameStatesEnum.LOSE:
+            this.deathAnimate(dt);
     }
     //console.log('x: ' + this.tileX + ', y: ' + this.tileY + ', rot: ' + this.rot / Math.PI + 'pi');
 };
@@ -356,13 +359,13 @@ var allEnemies;
 var player;
 var GameState = function() {
     this.state = GameStatesEnum.INTRO;
-    this.victoryCounter = 0;
+    this.gameEndCounter = 0;
 };
 
 GameState.prototype.update = function(dt) {
-    if (this.state == GameStatesEnum.VICTORY) {
-        this.victoryCounter += dt;
-        if (this.victoryCounter > 5) {
+    if (this.state == GameStatesEnum.VICTORY || this.state == GameStatesEnum.LOSE) {
+        this.gameEndCounter += dt;
+        if (this.gameEndCounter > 5) {
             newGame();
         }
     }
@@ -423,13 +426,20 @@ var ScreenText = function() {
 ScreenText.prototype.render = function() {
     ctx.font = '40px serif';
     ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#fff';
     ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
-    if (gameState.state == GameStatesEnum.VICTORY) {
+    if (gameState.state == GameStatesEnum.VICTORY || gameState.state == GameStatesEnum.LOSE) {
         ctx.font = '120px san-serif';
-        ctx.textBaseline = 'top';
         ctx.fillStyle = '#ff0';
-        ctx.fillText('WINNER', MAP.tile.width * MAP.maxXTile * 0.3, MAP.tile.height * MAP.maxYTile * 0.5);
+        ctx.textAlign = 'center';
+        if (gameState.state == GameStatesEnum.VICTORY) {
+            var text = 'WINNER!';
+        } else {
+            var text = 'YOU LOSE.';
+        }
+        ctx.fillText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
+        ctx.strokeText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
     }
 };
 var screenText = new ScreenText;
