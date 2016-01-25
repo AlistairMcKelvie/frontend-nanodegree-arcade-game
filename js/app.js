@@ -36,7 +36,7 @@ var GameStatesEnum = {
     LOSE: 4
 };
 
-COLLISION_ON = true;
+COLLISION_ON = false;
 
 var GameEntity = function(initTileX, initTileY) {
     this.tileX = initTileX;
@@ -183,6 +183,9 @@ Player.prototype.update = function(dt) {
                 this.normalUpdate();
             }
             break;
+        case GameStatesEnum.VICTORY:
+            this.victoryAnimate(dt);
+            break;
         case GameStatesEnum.LOSE:
             this.deathAnimate(dt);
     }
@@ -192,23 +195,24 @@ Player.prototype.update = function(dt) {
 Player.prototype.normalUpdate = function() {
     this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
     this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
-    // save this pos may have to go back to it after collision
-    var oldX = this.x;
-    var oldY = this.y;
-    this.x = MAP.tile.width * this.tileX + this.xOffset;
-    this.y = MAP.tile.height * this.tileY + this.yOffset;
     if (this.tileY <= MAP.minYTile) {
         // WINNER!
         gameState.state = GameStatesEnum.VICTORY;
-    }
-    this.collision();
-    if (player.collided) {
-        // deny move and go back last pos
-        this.x = oldX;
-        this.y = oldY;
-        this.tileX = (this.x - this.xOffset) / MAP.tile.width;
-        this.tileY = (this.y - this.yOffset) / MAP.tile.height;
-        this.collided = false;
+    } else {
+        // save this pos may have to go back to it after collision
+        var oldX = this.x;
+        var oldY = this.y;
+        this.x = MAP.tile.width * this.tileX + this.xOffset;
+        this.y = MAP.tile.height * this.tileY + this.yOffset;
+        this.collision();
+        if (player.collided) {
+            // deny move and go back last pos
+            this.x = oldX;
+            this.y = oldY;
+            this.tileX = (this.x - this.xOffset) / MAP.tile.width;
+            this.tileY = (this.y - this.yOffset) / MAP.tile.height;
+            this.collided = false;
+        }
     }
 };
 
@@ -249,6 +253,20 @@ Player.prototype.deathAnimate = function(dt) {
         this.rot = 0;
         this.dead = false;
         this.respawning = true;
+    }
+};
+
+Player.prototype.victoryAnimate = function(dt) {
+    if (!this.jump) {
+        // Start first jump
+        this.jump = new Jump(this.tileX, this.tileY + 1, this.tileX, this.tileY);
+    } else if (this.jump.finished) {
+        // Made it to destination
+    } else {
+        // normal jump update
+        this.jump.update(dt);
+        this.x += this.jump.xUpdateVal;
+        this.y += this.jump.yUpdateVal;
     }
 };
 
@@ -341,9 +359,9 @@ var Jump = function(startXTile, startYTile, destXTile, destYTile) {
     this.xProgress = 0;
     this.yProgress = 0;
     this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
-    this.destYOffset = -(destYTile - startYTile) * MAP.tile.height;
+    this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
     this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
-    this.jumpHeight = this.jumpDist;
+    this.jumpHeight = -this.jumpDist;
     this.speed = 300;
     this.dx = this.speed * this.destXOffset / this.jumpDist;
     this.dy = this.speed * this.destYOffset / this.jumpDist;
@@ -358,10 +376,11 @@ Jump.prototype.update = function(dt) {
     var prog = Math.sqrt(Math.pow(newXProg, 2) + Math.pow(newYProg, 2));
     dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * prog / this.jumpDist);
     this.xUpdateVal = newXProg - this.xProgress;
-    this.yUpdateVal = -(newYProg - this.yProgress + dz);
+    this.yUpdateVal = newYProg - this.yProgress + dz;
     this.xProgress = newXProg;
     this.yProgress = newYProg;
-    if (this.xProgress >= this.destXOffset && this.yProgress >= this.destYOffset) {
+    console.log(this.xProgress + ", " + this.yProgress);
+    if (prog >= this.jumpDist) {
         this.finished = true;
     }
 };
