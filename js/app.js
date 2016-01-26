@@ -348,32 +348,36 @@ var Jump = function(startXTile, startYTile, destXTile, destYTile) {
     console.log('start XY, dest XY: ' + startXTile + ' ' + startYTile + ', ' + destXTile + ' ' + destYTile);
     this.destXTile = destXTile;
     this.destYTile = destYTile;
-    this.xProgress = 0;
-    this.yProgress = 0;
-    this.destXOffset = (destXTile - startXTile) * MAP.tile.width;
-    this.destYOffset = (destYTile - startYTile) * MAP.tile.height;
-    this.jumpDist = Math.sqrt(Math.pow(this.destXOffset, 2) + Math.pow(this.destYOffset, 2));
-    this.jumpHeight = -this.jumpDist;
-    this.speed = 300;
-    this.dx = this.speed * this.destXOffset / this.jumpDist;
-    this.dy = this.speed * this.destYOffset / this.jumpDist;
+    this.x = 0;
+    this.y = 0;
+    this.destX = (destXTile - startXTile) * MAP.tile.width;
+    this.destY = (destYTile - startYTile) * MAP.tile.height;
+    this.jumpDist = Math.sqrt(Math.pow(this.destX, 2) + Math.pow(this.destY, 2));
+    this.jumpHeight = -0.5 * this.jumpDist;
+    this.speed = 150;
+    this.finalJumpTime = this.jumpDist / this.speed;
+    this.jumpTime = 0;
+    this.u = this.speed * this.destX / this.jumpDist;
+    this.v = this.speed * this.destY / this.jumpDist;
+    this.z = 0
     this.finished = false;
 };
 
 Jump.prototype.update = function(dt) {
-    // jump eqn z = (4h/d)(x - (x^2)/d)
-    // jump dz = (4h/d)(1 - 2x/d)
-    var newXProg = this.xProgress + this.dx * dt;
-    var newYProg = this.yProgress + this.dy * dt;
-    var prog = Math.sqrt(Math.pow(newXProg, 2) + Math.pow(newYProg, 2));
-    dz = (4 * this.jumpHeight / this.jumpDist) * (1 - 2 * prog / this.jumpDist);
-    this.xUpdateVal = newXProg - this.xProgress;
-    this.yUpdateVal = newYProg - this.yProgress + dz;
-    this.xProgress = newXProg;
-    this.yProgress = newYProg;
-    if (prog >= this.jumpDist) {
+    this.jumpTime += dt;
+    // jump z = (4h/d)(x - (x^2)/d)
+    if (this.jumpTime > this.finalJumpTime) {
+        dt = dt - (this.jumpTime - this.finalJumpTime);
         this.finished = true;
     }
+    this.dx = this.u * dt;
+    this.dy = this.v * dt;
+    this.x += this.dx;
+    this.y += this.dy;
+    var dist = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
+    var dz = (4 * this.jumpHeight / this.jumpDist) * (dist - Math.pow(dist, 2) / this.jumpDist) - this.z;
+    this.z += dz;
+    this.dyz = this.dy + dz;
 };
 
 // Now instantiate your objects.
