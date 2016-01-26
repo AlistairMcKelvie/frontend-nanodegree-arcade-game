@@ -37,6 +37,12 @@ var GameStatesEnum = {
     LOSE: 4
 };
 
+var EntityStateEnum = {
+    NORMAL: 1,
+    DEAD: 2,
+    RESPAWNING: 3
+};
+
 COLLISION_ON = true;
 
 var GameEntity = function(initTileX, initTileY) {
@@ -49,7 +55,7 @@ var GameEntity = function(initTileX, initTileY) {
     this.rotPtX = 50.5;
     this.rotPtY = 125;
     this.collisionWidth = 50;
-    this.dead = false;
+    this.state = EntityStateEnum.NORMAL;
 }
 
 GameEntity.prototype.render = function() {
@@ -95,7 +101,7 @@ Bug.prototype.update = function(dt) {
     // You should multiply any movement by the dt parameter
     // which will ensure the game runs at the same dx for
     // all computers.
-    if (this.dead) {
+    if (this.state == EntityStateEnum.DEAD) {
         this.deathAnimate(dt);
     } else {
         this.normalUpdate(dt);
@@ -132,7 +138,7 @@ Bug.prototype.deathAnimate = function(dt) {
 };
 
 Bug.prototype.collide = function() {
-    this.dead = true;
+    this.state = EntityStateEnum.DEAD;
     this.deathTimer = 0;
     this.dx = -this.dx;
 }
@@ -164,8 +170,6 @@ var Player = function(initTileX, initTileY) {
     this.sprite = "images/char-boy.png";
     this.lives = 3;
     this.currentCollions = [];
-    this.jumping = false;
-    this.respawning = false;
 };
 Player.prototype = new GameEntity;
 
@@ -175,9 +179,9 @@ Player.prototype.update = function(dt) {
             this.introAnimate(dt);
             break;
         case GameStatesEnum.NORMAL:
-            if (this.dead) {
+            if (this.state == EntityStateEnum.DEAD) {
                 this.deathAnimate(dt);
-            } else if (this.respawning) {
+            } else if (this.state == EntityStateEnum.RESPAWNING) {
                 this.respawnAnimate(dt);
             } else {
                 this.normalUpdate();
@@ -189,7 +193,6 @@ Player.prototype.update = function(dt) {
         case GameStatesEnum.LOSE:
             this.deathAnimate(dt);
     }
-    //console.log('x: ' + this.tileX + ', y: ' + this.tileY + ', rot: ' + this.rot / Math.PI + 'pi');
 };
 
 Player.prototype.normalUpdate = function() {
@@ -251,8 +254,7 @@ Player.prototype.deathAnimate = function(dt) {
     this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
         // Death anim complete
-        this.dead = false;
-        this.respawning = true;
+        this.state = EntityStateEnum.RESPAWNING;
     }
 };
 
@@ -280,7 +282,7 @@ Player.prototype.respawnAnimate = function(dt) {
         this.tileX = MAP.startX;
         this.tileY = MAP.startY;
         gameState.state = GameStatesEnum.NORMAL;
-        this.respawning = false;
+        this.state = EntityStateEnum.NORMAL;
         this.jump = false;
     } else {
         // normal jump update
@@ -306,7 +308,7 @@ Player.prototype.collision = function() {
         if (collideX && collideY && COLLISION_ON){
             plr.collided = true;
             if (enemy.deadly) {
-                plr.dead = true;
+                plr.state = EntityStateEnum.DEAD;
                 plr.deathTimer = 0;
                 plr.lives--;
                 if (plr.lives <= 0) {
@@ -319,7 +321,7 @@ Player.prototype.collision = function() {
 };
 
 Player.prototype.handleInput = function(key) {
-    if (gameState.state == GameStatesEnum.NORMAL && !this.dead) {
+    if (gameState.state == GameStatesEnum.NORMAL && this.state == EntityStateEnum.NORMAL) {
         switch (key) {
             case "left":
                 this.tileX -= 1;
@@ -338,6 +340,7 @@ Player.prototype.handleInput = function(key) {
 };
 
 var Jump = function(startXTile, startYTile, destXTile, destYTile) {
+    console.log('start XY, dest XY: ' + startXTile + ' ' + startYTile + ', ' + destXTile + ' ' + destYTile);
     this.destXTile = destXTile;
     this.destYTile = destYTile;
     this.xProgress = 0;
