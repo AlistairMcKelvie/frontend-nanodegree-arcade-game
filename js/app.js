@@ -41,6 +41,7 @@ var Map = function(){
 };
 var MAP = new Map;
 
+
 /*
  * Various states which the game / entities can be in.
  */
@@ -55,6 +56,30 @@ var EntityStateEnum = {
     NORMAL: 1,
     DEAD: 2,
     RESPAWNING: 3
+};
+
+/*
+ * Game state class, used for tracking what the current behaviour of the game should be.
+ */
+var GameState = function() {
+    // start the game with the intro
+    this.state = GameStatesEnum.INTRO;
+    // Count up till the end of the game after win / loss
+    this.gameEndCounter = 0;
+};
+
+/*
+ * Games state updater, called by the engine.
+ * Currently just counts up to the end of the game after victory / loss
+ */
+GameState.prototype.update = function(dt) {
+    // if th
+    if (this.state == GameStatesEnum.VICTORY || this.state == GameStatesEnum.LOSE) {
+        this.gameEndCounter += dt;
+        if (this.gameEndCounter > 5) {
+            newGame();
+        }
+    }
 };
 
 /*
@@ -76,8 +101,8 @@ var GameEntity = function(initTileX, initTileY) {
     // the centre point of the entity which it rotates on if rotation occurs
     this.rotPtX = 50.5;
     this.rotPtY = 125;
-    // radius of the entity - used for collision detection
-    this.collisionWidth = 50;
+    // width of the entity - used for collision detection
+    this.width = 100;
     // will this entity kill with player on collision, override this in children
     this.deadly = false;
 
@@ -126,6 +151,8 @@ var Bug = function(initTileX, initTileY) {
     this.uChangeTimer = (Math.random()) * 3;
     // bugs kill player on collision
     this.deadly = true;
+    // width of the entity - used for collision detection
+    this.width = 100;
 
     this.sprite = IMAGES.bug;
 };
@@ -210,6 +237,9 @@ Bug.prototype.collide = function() {
 var Rock = function(initTileX, initTileY) {
     this.base = Enemy;
     this.base(initTileX, initTileY);
+    // width of the entity - used for collision detection
+    this.width = 100;
+
     this.sprite = IMAGES.rock;
 }
 Rock.prototype = new Enemy;
@@ -231,6 +261,8 @@ var Player = function(initTileX, initTileY) {
     this.base(initTileX, initTileY);
     // current player lives
     this.lives = 3;
+    // radius of the entity - used for collision detection
+    this.width = 60;
 
     this.sprite = IMAGES.player;
 };
@@ -297,34 +329,42 @@ Player.prototype.normalUpdate = function() {
 };
 
 /*
- * update the player's position, for intro animation
+ * update the player's position for intro animation
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.introAnimate = function(dt) {
     if (!this.jump) {
+        // There's no jump, start the first one
         this.jumpCount = 0;
         this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
     } else if (this.jumpCount == 4 && this.jump.finished) {
         // Made it to destination, set tile coords and game state to normal
-        this.tileX = MAP.startX;
-        this.tileY = MAP.startY;
+        this.tileX++;
         gameState.state = GameStatesEnum.NORMAL;
         this.jump = false;
-    } else if (!this.jump || this.jump.finished) {
+    } else if (this.jump.finished) {
         // Last jump finished, start a new one
-        // Start a new jump
+        this.tileX++;
         this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
         this.jumpCount++;
     } else {
-        // normal jump update
+        // Normal jump update - jump calculates dx, dy, dz at
+        // each point of the jump and those values are added to x & y.
+        // dz is added to y as it appears on the same axis
+        // When the jump is complete update the tile coords.
         this.jump.update(dt);
         this.x += this.jump.dx;
         this.y += this.jump.dyz;
     }
 };
 
+/*
+ * update the player's rotation for death animation
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.deathAnimate = function(dt) {
     this.deathTimer += dt;
+    // rotate to max value of pi/2
     this.rotation = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
         // Death anim complete
@@ -332,9 +372,14 @@ Player.prototype.deathAnimate = function(dt) {
     }
 };
 
+/*
+ * update the player's position for the victory animation
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.victoryAnimate = function(dt) {
     if (!this.jump) {
-        // Start first jump
+        // Start first jump (initial jump y value is 1 down from current, location
+        // so that the player jumps from that location, to their currenct location)
         this.jump = new Jump(this.tileX, this.tileY + 1, this.tileX, this.tileY);
     } else if (this.jump.finished) {
         // Made it to destination
@@ -346,13 +391,18 @@ Player.prototype.victoryAnimate = function(dt) {
     }
 };
 
+
+/*
+ * update the player's position for the respawn animation
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.respawnAnimate = function(dt) {
     if (!this.jump) {
         this.rotation = 0;
-        // Start first jump
+        // Start first jump - jump back to start location
         this.jump = new Jump(this.tileX, this.tileY, MAP.startX, MAP.startY);
     } else if (this.jump.finished) {
-        // Made it to destination
+        // Made it to destination, go back to normal mode
         this.tileX = MAP.startX;
         this.tileY = MAP.startY;
         gameState.state = GameStatesEnum.NORMAL;
@@ -366,19 +416,29 @@ Player.prototype.respawnAnimate = function(dt) {
     }
 };
 
+/*
+ * Player collision method, checks collision with everything in the allEnemies array,
+ * if any collisions occur it returns true, otherwise it returns false.
+ * If the a collided enemy has the deadly property set to true, the players life count
+ * is decremented, and it's state is set to dead. The enemies collieded method is also
+ * called.
+ */
 Player.prototype.collision = function() {
+    // plr used for keeping a reference to the player in the inner function
     var plr = this;
     var collided = false;
     allEnemies.forEach(function(enemy) {
-        if (enemy.x >= plr.x - (plr.collisionWidth + enemy.collisionWidth) / 2) {
-            if (enemy.x <= plr.x + (plr.collisionWidth + enemy.collisionWidth) / 2) {
-                var collideX = true;
-            } else {
-                var collideX = false;
-            }
+        // Collision detection on x axis.
+        // If the distance between the is less than 1/2 the sum of the player and
+        // enemy widths, then a collision has occured.
+        var dist = Math.abs(plr.x - enemy.x);
+        if (dist <= (plr.width + enemy.width) / 2) {
+            var collideX = true;
         } else {
             var collideX = false;
         }
+        // Collision detection y axis, both player and enemys stay on discrete y
+        // levels, so just check if they are on the same level.
         var collideY = enemy.tileY == plr.tileY;
         if (collideX && collideY && COLLISION_ON){
             collided = true;
@@ -396,6 +456,10 @@ Player.prototype.collision = function() {
     return collided;
 };
 
+/*
+ * Handle key board input update player tile coords based on arrow key input
+ * parameter: key, name of the key pressed(left, right, up, down)
+ */
 Player.prototype.handleInput = function(key) {
     if (gameState.state == GameStatesEnum.NORMAL && this.state == EntityStateEnum.NORMAL) {
         switch (key) {
@@ -415,66 +479,108 @@ Player.prototype.handleInput = function(key) {
     }
 };
 
+/*
+ * Jump class - used to calculate the dx, dy values of jumping entity.
+ * parameters: startXTile, startYTile - the tile coords of the start the jump
+ *             destXTile, destYTile - the tile coords of the end of the jump
+ */
 var Jump = function(startXTile, startYTile, destXTile, destYTile) {
-    console.log('start XY, dest XY: ' + startXTile + ' ' + startYTile + ', ' + destXTile + ' ' + destYTile);
-    this.destXTile = destXTile;
-    this.destYTile = destYTile;
+    // coords of the jump, relative to start location
     this.x = 0;
     this.y = 0;
+    this.z = 0
+    // coords of the destination, relative to the start location
     this.destX = (destXTile - startXTile) * MAP.tile.width;
     this.destY = (destYTile - startYTile) * MAP.tile.height;
+    // jump surface distance
     this.jumpDist = Math.sqrt(Math.pow(this.destX, 2) + Math.pow(this.destY, 2));
+    // jump height (z cord
     this.jumpHeight = -0.5 * this.jumpDist;
+    // surface speed of the jump
     this.speed = 150;
-    this.finalJumpTime = this.jumpDist / this.speed;
+    // time to complete jump, used for checking if final timestep has overshot
     this.jumpTime = 0;
+    this.finalJumpTime = this.jumpDist / this.speed;
+    // u, v - x, y speeds
     this.u = this.speed * this.destX / this.jumpDist;
     this.v = this.speed * this.destY / this.jumpDist;
-    this.z = 0
+    // is the jump complete
     this.finished = false;
 };
 
+/*
+ * Update the dx & dyz values of the jump.
+ * dyz is the sum dy & dz
+ * These values are used to update the jumping entite's x * y values respectively.
+ * parameter: dt, a time delta between ticks
+ */
 Jump.prototype.update = function(dt) {
     this.jumpTime += dt;
-    // jump z = (4h/d)(x - (x^2)/d)
+    // If the total time of the jump is greater than the finalJump time the jump
+    // will overshoot, so reduce dt such the jump will end at the correct time
+    // and won't overshoot.
     if (this.jumpTime > this.finalJumpTime) {
         dt = dt - (this.jumpTime - this.finalJumpTime);
         this.finished = true;
     }
+    // calculate dx & dy, and update x & y
     this.dx = this.u * dt;
     this.dy = this.v * dt;
     this.x += this.dx;
     this.y += this.dy;
-    var dist = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
-    var dz = (4 * this.jumpHeight / this.jumpDist) * (dist - Math.pow(dist, 2) / this.jumpDist) - this.z;
+    // calculate dz and z from x & y
+    var dz = this.calculateZ(this.x, this.y) - this.z;
     this.z += dz;
+    // set dyz from dy & dz
     this.dyz = this.dy + dz;
 };
 
-// Now instantiate your objects.
-// Place all enemy objects in an array called allEnemies
-// Place the player object in a variable called player
-//
-var allEnemies;
-var player;
-var GameState = function() {
-    this.state = GameStatesEnum.INTRO;
-    this.gameEndCounter = 0;
+/*
+ * Calculate jump z from x & y, based on the quadratic eqn:
+ * z = (4H/D)(x - (x^2)/D), where D is the distance of the jump and H is the height of the jump
+ */
+Jump.prototype.calculateZ = function(x, y) {
+    var dist = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+    var z = (4 * this.jumpHeight / this.jumpDist) * (dist - Math.pow(dist, 2) / this.jumpDist);
+    return z;
 };
 
-GameState.prototype.update = function(dt) {
-    if (this.state == GameStatesEnum.VICTORY || this.state == GameStatesEnum.LOSE) {
-        this.gameEndCounter += dt;
-        if (this.gameEndCounter > 5) {
-            newGame();
+/*
+ * Screen text function, used for displaying text on the screen.
+ * called by the engine
+ */
+renderScreenText = function() {
+    // display current player lives
+    ctx.font = '40px serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
+
+    if (gameState.state == GameStatesEnum.VICTORY || gameState.state == GameStatesEnum.LOSE) {
+        // Set up victory / loss text style and display, with text depending on the state.
+        ctx.font = '120px san-serif';
+        ctx.fillStyle = '#ff0';
+        ctx.textAlign = 'center';
+        if (gameState.state == GameStatesEnum.VICTORY) {
+            var text = 'WINNER!';
+        } else {
+            var text = 'YOU LOSE.';
         }
+        ctx.fillText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
+        ctx.strokeText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
     }
 };
 
-var newGame = function() {
-    // Generate random enemies
-    allEnemies = [];
-    var bugRows = [1, 3, 6];
+/*
+ * Proceedure to setup a new game - adds all the entities, and creates a new game state.
+ */
+var createEnemies = function() {
+    // the all enemies array
+    var allEnemies = []
+    // y rows to contain bugs
+    var bugRows = [1, 3, 4];
+    // generate random bugs in each row and push to allEnemies
     bugRows.forEach(function(row) {
         var bugCount = randomInt(3, 5);
         for (var i = 0; i < bugCount; i++) {
@@ -482,37 +588,53 @@ var newGame = function() {
         }
     });
 
-    // Top & bottomg rows
+    // Generate the rocks. The top and bottom rows have only one gap, but
+    // middle row has more gaps to allow intermediate hiding locations for 
+    // the player going left or right.
+
+    // Top & bottom rows
     var missingRock;
-    [2, 5].forEach(function(row) {
+    [2, 6].forEach(function(row) {
+        // randomly generate one empty space
         missingRock = randomInt(MAP.minXTile, MAP.maxXTile);
         for (var col = 0; col <= MAP.maxXTile; col++) {
+            // fill up all the tiles in the row except the missing one
             if (col != missingRock) {
                 allEnemies.push(new Rock(col, row));
             }
         }
     });
-    // Middle row (one missing rock mus align with one below)
-    var row = 4;
+
+    // Middle row (one missing rock must align with one below)
+    var row = 5;
     var rockCount = 6;
+    // set containing all the tiles which already have rock in them
     var addedRocks = new Set();
-    var i = 0;
-    while (i < rockCount) {
-        // extra random rocks, can put rocks on top of each other, but thats ok
+    var addedRockCount = 0;
+    while (addedRockCount < rockCount) {
+        // Keep trying to add rocks until up to the rock count
+        // will fail and try again if the generate value is already in 
+        // the set or the required missing tile
         col = randomInt(MAP.minXTile, MAP.maxXTile);
         if (col != missingRock && !addedRocks.has(col)) {
             allEnemies.push(new Rock(col, row));
             addedRocks.add(col);
-            i++;
+            addedRockCount++;
         }
     }
+    return allEnemies
 
-    // create player
-    player = new Player(MAP.minXTile - 1, MAP.maxYTile);
-
+    // create the game state
     gameState = new GameState();
 };
-newGame();
+
+/*
+ * Global objects
+ */
+var allEnemies = createEnemies();
+// player starts offscreen and jumps on
+var player = new Player(MAP.minXTile - 1, MAP.maxYTile);
+var gameState = new GameState();
 
 
 // This listens for key presses and sends the keys to your
@@ -528,36 +650,16 @@ document.addEventListener('keyup', function(e) {
     player.handleInput(allowedKeys[e.keyCode]);
 });
 
-var ScreenText = function() {
-};
-
-ScreenText.prototype.render = function() {
-    ctx.font = '40px serif';
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#fff';
-    ctx.fillText('LIVES: ' + player.lives, 15, MAP.tile.height * 0.8);
-    if (gameState.state == GameStatesEnum.VICTORY || gameState.state == GameStatesEnum.LOSE) {
-        ctx.font = '120px san-serif';
-        ctx.fillStyle = '#ff0';
-        ctx.textAlign = 'center';
-        if (gameState.state == GameStatesEnum.VICTORY) {
-            var text = 'WINNER!';
-        } else {
-            var text = 'YOU LOSE.';
-        }
-        ctx.fillText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
-        ctx.strokeText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
-    }
-};
-var screenText = new ScreenText;
-
+/*
+ * Clamp number between min / max value.
+ */
 function clamp(number, min, max) {
-    // clamp number between min / max value
     return number < min ? min : number > max ? max : number;
 }
 
+/*
+ * Generates a random int between lower & upper (both inclusive).
+ */
 function randomInt(lower, upper) {
-    //generates a random int between lower & upper (both inclusive)
     return Math.floor(Math.random() * (upper - lower + 1) + lower);
 }

@@ -81,7 +81,6 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
     }
 
     /* This is called by the update function and loops through all of the
@@ -131,7 +130,7 @@ var Engine = (function(global) {
             }
         }
         renderEntities();
-        screenText.render();
+        renderScreenText();
     }
 
     /* This function is called by the render function and is called on each game
