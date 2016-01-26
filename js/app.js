@@ -13,13 +13,14 @@ var Map = function(){
         IMAGES.stone,
         IMAGES.stone,
         IMAGES.stone,
+        IMAGES.stone,
         IMAGES.grass,
         IMAGES.grass
     ],
     this.minXTile = 0,
-    this.maxXTile = this.rows.length,
+    this.maxXTile = 8,
     this.minYTile = 0,
-    this.maxYTile = 7,
+    this.maxYTile = this.rows.length - 1,
     this.tile = {
         width: 101,
         height: 83
@@ -379,7 +380,6 @@ Jump.prototype.update = function(dt) {
     this.yUpdateVal = newYProg - this.yProgress + dz;
     this.xProgress = newXProg;
     this.yProgress = newYProg;
-    console.log(this.xProgress + ", " + this.yProgress);
     if (prog >= this.jumpDist) {
         this.finished = true;
     }
@@ -408,7 +408,7 @@ GameState.prototype.update = function(dt) {
 var newGame = function() {
     // Generate random enemies
     allEnemies = [];
-    var bugRows = [1, 3, 5];
+    var bugRows = [1, 3, 6];
     bugRows.forEach(function(row) {
         var bugCount = randomInt(2, 5);
         for (var i = 0; i < bugCount; i++) {
@@ -416,22 +416,30 @@ var newGame = function() {
         }
     });
 
-    var rockRows = [2, 4];
-    rockRows.forEach(function(row) {
-        var filledCols = new Set();
-        var rockCount = randomInt(7, 8);
-        var i = 0;
-        while (i < rockCount) {
-            var col = randomInt(MAP.minXTile, MAP.maxXTile);
-            if (filledCols.has(col)) {
-               // rock already there, try again
-            } else {
+    // Top & bottomg rows
+    var missingRock;
+    [2, 5].forEach(function(row) {
+        missingRock = randomInt(MAP.minXTile, MAP.maxXTile);
+        for (var col = 0; col <= MAP.maxXTile; col++) {
+            if (col != missingRock) {
                 allEnemies.push(new Rock(col, row));
-                filledCols.add(col);
-                i++;
             }
         }
     });
+    // Middle row (one missing rock mus align with one below)
+    var row = 4;
+    var rockCount = 6;
+    var addedRocks = new Set();
+    var i = 0;
+    while (i < rockCount) {
+        // extra random rocks, can put rocks on top of each other, but thats ok
+        col = randomInt(MAP.minXTile, MAP.maxXTile);
+        if (col != missingRock && !addedRocks.has(col)) {
+            allEnemies.push(new Rock(col, row));
+            addedRocks.add(col);
+            i++;
+        }
+    }
 
     // create player
     player = new Player(MAP.minXTile - 1, MAP.maxYTile);
