@@ -1,8 +1,14 @@
-// Map
+// for testing
+COLLISION_ON = true;
+
+// Map things, 
 var IMAGES = {
     water: 'images/water-block.png',
     grass: 'images/grass-block.png',
-    stone: 'images/stone-block.png'
+    stone: 'images/stone-block.png',
+    bug: 'images/enemy-bug.png',
+    rock: 'images/Rock.png',
+    player: 'images/char-boy.png'
 };
 
 var Map = function(){
@@ -43,7 +49,6 @@ var EntityStateEnum = {
     RESPAWNING: 3
 };
 
-COLLISION_ON = true;
 
 var GameEntity = function(initTileX, initTileY) {
     this.tileX = initTileX;
@@ -91,7 +96,7 @@ var Bug = function(initTileX, initTileY) {
 
     // The image/sprite for our enemies, this uses
     // a helper we've provided to easily load images
-    this.sprite = 'images/enemy-bug.png';
+    this.sprite = IMAGES.bug;
 };
 Bug.prototype = new Enemy;
 
@@ -147,7 +152,7 @@ var Rock = function(initTileX, initTileY) {
     this.base = Enemy;
     this.base(initTileX, initTileY);
     this.deadly = false;
-    this.sprite = 'images/Rock.png';
+    this.sprite = IMAGES.rock;
 }
 Rock.prototype = new Enemy;
 
@@ -167,7 +172,7 @@ var Player = function(initTileX, initTileY) {
     this.base(initTileX, initTileY);
     this.collided = false;
     this.rot = 0;
-    this.sprite = "images/char-boy.png";
+    this.sprite = IMAGES.player;
     this.lives = 3;
     this.currentCollions = [];
 };
