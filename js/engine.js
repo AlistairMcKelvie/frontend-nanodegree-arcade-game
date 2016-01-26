@@ -27,7 +27,7 @@ var Engine = (function(global) {
 
 
     canvas.width = MAP.tile.width * (MAP.maxXTile + 1);
-    canvas.height = MAP.tile.height * (MAP.maxYTile + 3);
+    canvas.height = MAP.tile.height * (MAP.maxYTile + 2.1);
     doc.body.appendChild(canvas);
 
     /* This function serves as the kickoff point for the game loop itself
