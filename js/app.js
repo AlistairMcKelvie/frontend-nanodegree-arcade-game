@@ -251,7 +251,6 @@ Player.prototype.deathAnimate = function(dt) {
     this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
         // Death anim complete
-        this.rot = 0;
         this.dead = false;
         this.respawning = true;
     }
@@ -273,6 +272,7 @@ Player.prototype.victoryAnimate = function(dt) {
 
 Player.prototype.respawnAnimate = function(dt) {
     if (!this.jump) {
+        this.rot = 0;
         // Start first jump
         this.jump = new Jump(this.tileX, this.tileY, MAP.startX, MAP.startY);
     } else if (this.jump.finished) {
