@@ -37,7 +37,7 @@ var GameStatesEnum = {
     LOSE: 4
 };
 
-COLLISION_ON = false;
+COLLISION_ON = true;
 
 var GameEntity = function(initTileX, initTileY) {
     this.tileX = initTileX;
@@ -59,7 +59,6 @@ GameEntity.prototype.render = function() {
     ctx.drawImage(Resources.get(this.sprite), -this.rotPtX, -this.rotPtY);
     ctx.restore();
 };
-
 
 // Enemies our player must avoid
 var Enemy = function(initTileX, initTileY) {
@@ -212,6 +211,7 @@ Player.prototype.normalUpdate = function() {
             this.y = oldY;
             this.tileX = (this.x - this.xOffset) / MAP.tile.width;
             this.tileY = (this.y - this.yOffset) / MAP.tile.height;
+            console.log('colided xy: ' + this.tileX + ', ' + this.tileY);
             this.collided = false;
         }
     }
@@ -275,7 +275,7 @@ Player.prototype.respawnAnimate = function(dt) {
     if (!this.jump) {
         // Start first jump
         this.jump = new Jump(this.tileX, this.tileY, MAP.startX, MAP.startY);
-    } else if (this.y >= MAP.startY * MAP.tile.height + this.yOffset) {
+    } else if (this.jump.finished) {
         // Made it to destination
         this.tileX = MAP.startX;
         this.tileY = MAP.startY;
@@ -319,39 +319,22 @@ Player.prototype.collision = function() {
 };
 
 Player.prototype.handleInput = function(key) {
-    switch (key) {
-        case "left":
-            this.moveLeft();
-            break;
-        case "right":
-            this.moveRight();
-            break;
-        case "up":
-            this.moveUp();
-            break;
-        case "down":
-            this.moveDown();
+    if (gameState.state == GameStatesEnum.NORMAL && !this.dead) {
+        switch (key) {
+            case "left":
+                this.tileX -= 1;
+                break;
+            case "right":
+                this.tileX += 1;
+                break;
+            case "up":
+                this.tileY -= 1;
+                break;
+            case "down":
+                this.tileY += 1;
+        }
+        console.log('player xy: ' + this.x + ', ' + this.y);
     }
-};
-
-Player.prototype.moveLeft = function() {
-    this.tileX -= 1;
-    console.log('player xy: ' + this.x + ', ' + this.y);
-};
-
-Player.prototype.moveRight = function() {
-    this.tileX += 1;
-    console.log('player xy: ' + this.x + ', ' + this.y);
-};
-
-Player.prototype.moveUp = function() {
-    this.tileY -= 1;
-    console.log('player xy: ' + this.x + ', ' + this.y);
-};
-
-Player.prototype.moveDown = function() {
-    this.tileY += 1;
-    console.log('player xy: ' + this.x + ', ' + this.y);
 };
 
 var Jump = function(startXTile, startYTile, destXTile, destYTile) {
