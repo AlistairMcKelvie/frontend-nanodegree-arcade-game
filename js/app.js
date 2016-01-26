@@ -1,7 +1,9 @@
 // for testing
 COLLISION_ON = true;
 
-// Map things, 
+/*
+ * All images used in the game. No longer added in engine, just add them here.
+ */
 var IMAGES = {
     water: 'images/water-block.png',
     grass: 'images/grass-block.png',
@@ -11,6 +13,9 @@ var IMAGES = {
     player: 'images/char-boy.png'
 };
 
+/*
+ * Map class, change values here to modify map
+ */
 var Map = function(){
     this.rows = [
         IMAGES.water,
@@ -36,6 +41,9 @@ var Map = function(){
 };
 var MAP = new Map;
 
+/*
+ * Various states which the game / entities can be in.
+ */
 var GameStatesEnum = {
     INTRO: 1,
     NORMAL: 2,
@@ -49,63 +57,86 @@ var EntityStateEnum = {
     RESPAWNING: 3
 };
 
-
+/*
+ * GameEntity class, used as prototype for player and enemies.
+ * Parameters: initX, initY - tile coords to create entity at.
+ */
 var GameEntity = function(initTileX, initTileY) {
+    // current tile
     this.tileX = initTileX;
     this.tileY = initTileY;
+    // offset values to draw entity in correct part of tile
     this.xOffset = 0;
     this.yOffset = -30;
+    // current rotation in radians
+    this.rotation = 0;
+    // calculate coords from tile values
     this.x = MAP.tile.width * this.tileX + this.xOffset;
     this.y = MAP.tile.height * this.tileY + this.yOffset;
+    // the centre point of the entity which it rotates on if rotation occurs
     this.rotPtX = 50.5;
     this.rotPtY = 125;
+    // radius of the entity - used for collision detection
     this.collisionWidth = 50;
+    // will this entity kill with player on collision, override this in children
+    this.deadly = false;
+
     this.state = EntityStateEnum.NORMAL;
 }
 
 GameEntity.prototype.render = function() {
+    // Render the entity:
+    // - translate the canvas origin to the center of rotation of the entity
+    // - rotate the canvas
+    // - draw the image at the origin of the canvas
+    // - restore the canvas back to how it was before
     ctx.save();
     ctx.translate(this.x + this.rotPtX, this.y  + this.rotPtY);
-    ctx.rotate(this.rot);
+    ctx.rotate(this.rotation);
     ctx.drawImage(Resources.get(this.sprite), -this.rotPtX, -this.rotPtY);
     ctx.restore();
 };
 
-// Enemies our player must avoid
+
+
+/*
+ * Enemy class, which the various enemy class use as a prototype.
+ * Currently it has no properties different to to it's parent GameEntity, and is empty.
+ * Parameters: initX, initY - tile coords to create entity at.
+ */
 var Enemy = function(initTileX, initTileY) {
     this.base = GameEntity;
     this.base(initTileX, initTileY);
 }
 Enemy.prototype = new GameEntity;
 
-
-// Draw the enemy on the screen, required method for game
-
+/*
+ * Bug enemy class.
+ * Parameters: initX, initY - tile coords to create entity at.
+ */
 var Bug = function(initTileX, initTileY) {
-    // Variables applied to each of our instances go here,
-    // we've provided one for you to get started
     this.base = Enemy;
     this.base(initTileX, initTileY);
-    this.dx = 0;
-    this.dy = 0;
-    this.speed = Math.random() * 700;
-    this.targetSpeed = this.speed;
-    this.acceleration = 0;
-    this.dxChangeTimer = (Math.random()) * 3;
+    // initial speed, random value 0-700
+    this.u = Math.random() * 700;
+    this.v = 0;
+    // target speed, initally set to current speed, will be updated later
+    this.uTarget = this.u;
+    // timer until a new speed is set
+    this.uChangeTimer = (Math.random()) * 3;
+    // bugs kill player on collision
     this.deadly = true;
 
-    // The image/sprite for our enemies, this uses
-    // a helper we've provided to easily load images
     this.sprite = IMAGES.bug;
 };
 Bug.prototype = new Enemy;
 
-// Update the enemy's position, required method for game
-// Parameter: dt, a time delta between ticks
+/*
+ * Update the bugs's position, required method for game
+ * Parameter: dt, a time delta between ticks
+ */
 Bug.prototype.update = function(dt) {
-    // You should multiply any movement by the dt parameter
-    // which will ensure the game runs at the same dx for
-    // all computers.
+    // call update function based on state
     if (this.state == EntityStateEnum.DEAD) {
         this.deathAnimate(dt);
     } else {
@@ -113,150 +144,188 @@ Bug.prototype.update = function(dt) {
     }
 };
 
+/*
+ * Bug update if it's in it's normal state
+ * Parameter: dt, a time delta between ticks
+ */
 Bug.prototype.normalUpdate = function(dt) {
-    this.dxChangeTimer -= dt;
-    if (this.dxChangeTimer <= 0) {
-        if (this.targetSpeed == 0) {
-            this.targetSpeed = Math.random() * 700;
-            this.dxChangeTimer = 2;
+    // countdown for new target speed
+    this.uChangeTimer -= dt;
+    if (this.uChangeTimer <= 0) {
+        // generate a new target speed, if it's currently stationary
+        // set a random speed, otherwise stop it
+        if (this.uTarget == 0) {
+            this.uTarget = Math.random() * 700;
+            this.uChangeTimer = 2;
         } else {
-            this.targetSpeed = 0;
-            this.dxChangeTimer = 0.5;
+            this.uTarget = 0;
+            this.uChangeTimer = 0.5;
         }
     }
-    this.dx += (this.targetSpeed - this.dx) * 0.1;
-    this.x += dt * this.dx;
+    // accelerate towards target speed
+    this.u += (this.uTarget - this.u) * 0.25;
+    // update position
+    this.x += dt * this.u;
+    // wrap back on to the left if it's off screen
     if (this.x > ctx.canvas.width) {
         this.x = this.x % ctx.canvas.width;
     }
 }
 
+/*
+ * Bug update if it's dead
+ * Parameter: dt, a time delta between ticks
+ */
 Bug.prototype.deathAnimate = function(dt) {
     // only animate if it's on screen
     if (this.x > -100) {
-        this.deathTimer += dt;
-        this.dy += 200 * dt;
-        this.x += this.dx * dt;
-        this.y += this.dy * dt;
-        this.rot = -Math.PI * (this.deathTimer) * 2;
+        // accelerate downwards
+        this.v += 400 * dt;
+        // update pos
+        this.x += this.u * dt;
+        this.y += this.v * dt;
+        // spin
+        this.rotation -= 2 * Math.PI * dt;
     }
 };
 
+/*
+ * Bug collided
+ */
 Bug.prototype.collide = function() {
+    // set it's tile y offscreen so it can't collide anymore
+    this.tileY = -1;
+    // switch it's speed so if flies away
+    // this would be better if if the player had a speed property,
+    // but it doesn't so this will do.
+    this.u = -this.u;
+
     this.state = EntityStateEnum.DEAD;
-    this.deathTimer = 0;
-    this.dx = -this.dx;
 }
 
+/*
+ * Rock enemy class.
+ * Parameters: initX, initY - tile coords to create entity at.
+ */
 var Rock = function(initTileX, initTileY) {
     this.base = Enemy;
     this.base(initTileX, initTileY);
-    this.deadly = false;
     this.sprite = IMAGES.rock;
 }
 Rock.prototype = new Enemy;
 
 Rock.prototype.update = function() {
-    // do nothing
+    // I'm a rock - do nothing
 };
 
 Rock.prototype.collide = function() {
-    // do nothing
+    // I'm a rock - do nothing
 };
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
+/*
+ * Player class
+ * Parameters: initX, initY - tile coords to create entity at
+ */
 var Player = function(initTileX, initTileY) {
     this.base = GameEntity;
     this.base(initTileX, initTileY);
-    this.collided = false;
-    this.rot = 0;
-    this.sprite = IMAGES.player;
+    // current player lives
     this.lives = 3;
-    this.currentCollions = [];
+
+    this.sprite = IMAGES.player;
 };
 Player.prototype = new GameEntity;
 
+/*
+ * update the player's position
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.update = function(dt) {
+    // select appropriate update method, based on game & player state
     switch (gameState.state) {
         case GameStatesEnum.INTRO:
             this.introAnimate(dt);
-            break;
-        case GameStatesEnum.NORMAL:
-            if (this.state == EntityStateEnum.DEAD) {
-                this.deathAnimate(dt);
-            } else if (this.state == EntityStateEnum.RESPAWNING) {
-                this.respawnAnimate(dt);
-            } else {
-                this.normalUpdate();
-            }
             break;
         case GameStatesEnum.VICTORY:
             this.victoryAnimate(dt);
             break;
         case GameStatesEnum.LOSE:
             this.deathAnimate(dt);
+            break;
+        default:
+            switch (this.state) {
+                case EntityStateEnum.DEAD:
+                    this.deathAnimate(dt);
+                    break;
+                case EntityStateEnum.RESPAWNING:
+                    this.respawnAnimate(dt);
+                    break;
+                default:
+                    this.normalUpdate();
+            }
     }
 };
 
+/*
+ * update the player's position if player and game states are normal
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.normalUpdate = function() {
+    // clamp position inside the maps bounds
     this.tileX = clamp(this.tileX, MAP.minXTile, MAP.maxXTile);
     this.tileY = clamp(this.tileY, MAP.minYTile, MAP.maxYTile);
+    // if player is in top row of map set state to victory
     if (this.tileY <= MAP.minYTile) {
-        // WINNER!
         gameState.state = GameStatesEnum.VICTORY;
     } else {
-        // save this pos may have to go back to it after collision
+        // save current pos as we may have to revert to it after collision
         var oldX = this.x;
         var oldY = this.y;
         this.x = MAP.tile.width * this.tileX + this.xOffset;
         this.y = MAP.tile.height * this.tileY + this.yOffset;
-        this.collision();
-        if (player.collided) {
-            // deny move and go back last pos
+
+        // run collision method, if any collisions are detected
+        // it will return true
+        if (this.collision()) {
+            // if collision occured set position back to old position
             this.x = oldX;
             this.y = oldY;
             this.tileX = (this.x - this.xOffset) / MAP.tile.width;
             this.tileY = (this.y - this.yOffset) / MAP.tile.height;
-            console.log('colided xy: ' + this.tileX + ', ' + this.tileY);
-            this.collided = false;
         }
     }
 };
 
+/*
+ * update the player's position, for intro animation
+ * parameter: dt, a time delta between ticks
+ */
 Player.prototype.introAnimate = function(dt) {
     if (!this.jump) {
-        // Start first jump
+        this.jumpCount = 0;
         this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
-    } else if (this.x >= MAP.startX * MAP.tile.width + this.xOffset) {
-        // Made it to destination
+    } else if (this.jumpCount == 4 && this.jump.finished) {
+        // Made it to destination, set tile coords and game state to normal
         this.tileX = MAP.startX;
         this.tileY = MAP.startY;
         gameState.state = GameStatesEnum.NORMAL;
         this.jump = false;
-    } else if (this.jump.finished) {
-        // Update tile values
-        this.tileX = this.jump.destXTile;
-        this.tileY = this.jump.destYTile;
-        this.x = MAP.tile.width * this.tileX + this.xOffset;
-        this.y = MAP.tile.height * this.tileY + this.yOffset;
+    } else if (!this.jump || this.jump.finished) {
+        // Last jump finished, start a new one
         // Start a new jump
         this.jump = new Jump(this.tileX, this.tileY, this.tileX + 1, this.tileY);
-        this.jump.update(dt);
-        this.x += this.jump.xUpdateVal;
-        this.y += this.jump.yUpdateVal;
+        this.jumpCount++;
     } else {
         // normal jump update
         this.jump.update(dt);
-        this.x += this.jump.xUpdateVal;
-        this.y += this.jump.yUpdateVal;
+        this.x += this.jump.dx;
+        this.y += this.jump.dyz;
     }
 };
 
 Player.prototype.deathAnimate = function(dt) {
     this.deathTimer += dt;
-    this.rot = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
+    this.rotation = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
         // Death anim complete
         this.state = EntityStateEnum.RESPAWNING;
@@ -272,14 +341,14 @@ Player.prototype.victoryAnimate = function(dt) {
     } else {
         // normal jump update
         this.jump.update(dt);
-        this.x += this.jump.xUpdateVal;
-        this.y += this.jump.yUpdateVal;
+        this.x += this.jump.dx;
+        this.y += this.jump.dyz;
     }
 };
 
 Player.prototype.respawnAnimate = function(dt) {
     if (!this.jump) {
-        this.rot = 0;
+        this.rotation = 0;
         // Start first jump
         this.jump = new Jump(this.tileX, this.tileY, MAP.startX, MAP.startY);
     } else if (this.jump.finished) {
@@ -292,13 +361,14 @@ Player.prototype.respawnAnimate = function(dt) {
     } else {
         // normal jump update
         this.jump.update(dt);
-        this.x += this.jump.xUpdateVal;
-        this.y += this.jump.yUpdateVal;
+        this.x += this.jump.dx;
+        this.y += this.jump.dyz;
     }
 };
 
 Player.prototype.collision = function() {
-    plr = this;
+    var plr = this;
+    var collided = false;
     allEnemies.forEach(function(enemy) {
         if (enemy.x >= plr.x - (plr.collisionWidth + enemy.collisionWidth) / 2) {
             if (enemy.x <= plr.x + (plr.collisionWidth + enemy.collisionWidth) / 2) {
@@ -311,7 +381,7 @@ Player.prototype.collision = function() {
         }
         var collideY = enemy.tileY == plr.tileY;
         if (collideX && collideY && COLLISION_ON){
-            plr.collided = true;
+            collided = true;
             if (enemy.deadly) {
                 plr.state = EntityStateEnum.DEAD;
                 plr.deathTimer = 0;
@@ -323,6 +393,7 @@ Player.prototype.collision = function() {
             enemy.collide();
         }
     })
+    return collided;
 };
 
 Player.prototype.handleInput = function(key) {
@@ -405,7 +476,7 @@ var newGame = function() {
     allEnemies = [];
     var bugRows = [1, 3, 6];
     bugRows.forEach(function(row) {
-        var bugCount = randomInt(2, 5);
+        var bugCount = randomInt(3, 5);
         for (var i = 0; i < bugCount; i++) {
             allEnemies.push(new Bug(randomInt(MAP.minXTile, MAP.maxXTile), row));
         }
