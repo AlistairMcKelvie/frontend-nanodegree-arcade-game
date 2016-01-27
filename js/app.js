@@ -605,7 +605,7 @@ var renderScreenText = function() {
  */
 var createEnemies = function() {
     // the all enemies array
-    var allEnemies = []
+    var allEnemies = [];
     // y rows to contain bugs
     var bugRows = [1, 3, 4];
     // generate random bugs in each row and push to allEnemies
