@@ -14,9 +14,14 @@ var IMAGES = {
 };
 
 /*
- * Map class, change values here to modify map
+ * Map constructor, change values here to modify map.
+ * The map is laid out in tile coordinates which correspond to to each tile image,
+ * and define the size of the players moves, the locations of the rocks and the size
+ * of the map. Pixel coordinates are calculated from the the tile coordinates as required.
  */
 var Map = function(){
+    // images corresponding to rows in the map. Each row can only contain on type of image
+    // change these to change images and height of the map
     this.rows = [
         IMAGES.water,
         IMAGES.stone,
@@ -28,22 +33,31 @@ var Map = function(){
         IMAGES.grass,
         IMAGES.grass
     ],
+    // bounds of the map, the width can be changed by altering maxXTile min values should
+    // be left at zero, and the height of the map should be changed by modifying the rows
+    // array above
     this.minXTile = 0,
     this.maxXTile = 8,
     this.minYTile = 0,
     this.maxYTile = this.rows.length - 1,
+    // size of each tile in pixels
     this.tile = {
         width: 101,
         height: 83
     }
+    // starting location of the player (bottom middle) this can be changed here
     this.startX = Math.ceil(this.maxXTile / 2);
     this.startY = this.maxYTile;
 };
 var MAP = new Map();
 
 
+
+
 /*
  * Various states which the game / entities can be in.
+ * Set the state property of the game / entity object to one of these
+ * when they change state.
  */
 var GameStatesEnum = {
     INTRO: 1,
@@ -58,8 +72,12 @@ var EntityStateEnum = {
     RESPAWNING: 3
 };
 
+
+
+
 /*
- * Game state class, used for tracking what the current behaviour of the game should be.
+ * Game state constuctor, used for tracking what the current behaviour of the game should be.
+ * Currently just contains a state property, and a counter to end the game after win / loss.
  */
 var GameState = function() {
     // start the game with the intro
@@ -69,7 +87,7 @@ var GameState = function() {
 };
 
 /*
- * Games state updater, called by the engine.
+ * Games state update method, called by the engine.
  * Currently just counts up to the end of the game after victory / loss
  */
 GameState.prototype.update = function(dt) {
@@ -82,15 +100,18 @@ GameState.prototype.update = function(dt) {
     }
 };
 
+
+
+
 /*
- * GameEntity class, used as prototype for player and enemies.
+ * GameEntity constructor, used as prototype for player and enemy objects.
  * Parameters: initX, initY - tile coords to create entity at.
  */
 var GameEntity = function(initTileX, initTileY) {
     // current tile
     this.tileX = initTileX;
     this.tileY = initTileY;
-    // offset values to draw entity in correct part of tile
+    // offset values, used to draw entity in correct part of tile
     this.xOffset = 0;
     this.yOffset = -30;
     // current rotation in radians
@@ -109,6 +130,9 @@ var GameEntity = function(initTileX, initTileY) {
     this.state = EntityStateEnum.NORMAL;
 }
 
+/*
+ * Render the the entity method, called by the engine
+ */
 GameEntity.prototype.render = function() {
     // Render the entity:
     // - translate the canvas origin to the center of rotation of the entity
@@ -124,23 +148,16 @@ GameEntity.prototype.render = function() {
 
 
 
-/*
- * Enemy class, which the various enemy class use as a prototype.
- * Currently it has no properties different to to it's parent GameEntity, and is empty.
- * Parameters: initX, initY - tile coords to create entity at.
- */
-var Enemy = function(initTileX, initTileY) {
-    this.base = GameEntity;
-    this.base(initTileX, initTileY);
-}
-Enemy.prototype = new GameEntity;
 
 /*
- * Bug enemy class.
+ * Bug enemy constructor.
+ * Creates a bug object, which moves left to right along it's initial
+ * y tile level, the bug will change to random speed, and stop at intevals.
+ * The bug will wrap back on the left of the screen when it moves off the right.
  * Parameters: initX, initY - tile coords to create entity at.
  */
 var Bug = function(initTileX, initTileY) {
-    this.base = Enemy;
+    this.base = GameEntity;
     this.base(initTileX, initTileY);
     // initial speed, random value 0-700
     this.u = Math.random() * 700;
@@ -156,23 +173,19 @@ var Bug = function(initTileX, initTileY) {
 
     this.sprite = IMAGES.bug;
 };
-Bug.prototype = new Enemy;
+Bug.prototype = new GameEntity;
 
 /*
- * Update the bugs's position, required method for game
+ * Update method, updates the bugs's position, calls a specific update method based on
+ * the bugs state.
  * Parameter: dt, a time delta between ticks
  */
 Bug.prototype.update = function(dt) {
-    // call update function based on state
-    if (this.state == EntityStateEnum.DEAD) {
-        this.deathAnimate(dt);
-    } else {
-        this.normalUpdate(dt);
-    }
+    this.state == EntityStateEnum.DEAD ? this.deathAnimate(dt) : this.normalUpdate(dt);
 };
 
 /*
- * Bug update if it's in it's normal state
+ * Bug update method if it's in it's normal state
  * Parameter: dt, a time delta between ticks
  */
 Bug.prototype.normalUpdate = function(dt) {
@@ -200,11 +213,13 @@ Bug.prototype.normalUpdate = function(dt) {
 }
 
 /*
- * Bug update if it's dead
+ * Bug update if it's dead - fly off screen
  * Parameter: dt, a time delta between ticks
  */
 Bug.prototype.deathAnimate = function(dt) {
-    // only animate if it's on screen
+    // only animate if it's on screen, otherwise just remain off screen
+    // If we were spawning large number of bug, they should be remove as they
+    // die, but for now they are just hidden.
     if (this.x > -100) {
         // accelerate downwards
         this.v += 400 * dt;
@@ -217,43 +232,50 @@ Bug.prototype.deathAnimate = function(dt) {
 };
 
 /*
- * Bug collided
+ * Bug collide method, called in the player when it detects collision with bug
+ * caused bug to die and fly off screen
  */
 Bug.prototype.collide = function() {
-    // set it's tile y offscreen so it can't collide anymore
-    this.tileY = -1;
     // switch it's speed so if flies away
-    // this would be better if if the player had a speed property,
-    // but it doesn't so this will do.
+    // ideally player would have a speed property, and a new velocity could be
+    // calculated from their collision but it doesn't so this will do.
     this.u = -this.u;
 
     this.state = EntityStateEnum.DEAD;
 }
 
 /*
- * Rock enemy class.
+ * Rock enemy constructor. Stationary, not deadly, just prevents player movement
  * Parameters: initX, initY - tile coords to create entity at.
  */
 var Rock = function(initTileX, initTileY) {
-    this.base = Enemy;
+    this.base = GameEntity;
     this.base(initTileX, initTileY);
     // width of the entity - used for collision detection
     this.width = 100;
 
     this.sprite = IMAGES.rock;
 }
-Rock.prototype = new Enemy;
+Rock.prototype = new GameEntity;
 
+/*
+ * Bug update method, called by the engine
+ */
 Rock.prototype.update = function() {
     // I'm a rock - do nothing
 };
 
+/*
+ * Rock collide method, called in the player when it detects collision with rock
+ */
 Rock.prototype.collide = function() {
     // I'm a rock - do nothing
 };
 
 /*
- * Player class
+ * Player constructor, player moves instantly from tile to tile with keyboard input.
+ * Player can also jump, this is currently only is in animation sequences.
+ * If the player live property reaches zero the game ends.
  * Parameters: initX, initY - tile coords to create entity at
  */
 var Player = function(initTileX, initTileY) {
@@ -261,7 +283,7 @@ var Player = function(initTileX, initTileY) {
     this.base(initTileX, initTileY);
     // current player lives
     this.lives = 3;
-    // radius of the entity - used for collision detection
+    // width of the player - used for collision detection
     this.width = 60;
 
     this.sprite = IMAGES.player;
@@ -269,7 +291,8 @@ var Player = function(initTileX, initTileY) {
 Player.prototype = new GameEntity;
 
 /*
- * update the player's position
+ * update method, the player's position
+ * calls a specific update method, dependant on the state of the game / player
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.update = function(dt) {
@@ -299,7 +322,7 @@ Player.prototype.update = function(dt) {
 };
 
 /*
- * update the player's position if player and game states are normal
+ * normal update method, update the player's position if player and game states are normal
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.normalUpdate = function() {
@@ -313,6 +336,7 @@ Player.prototype.normalUpdate = function() {
         // save current pos as we may have to revert to it after collision
         var oldX = this.x;
         var oldY = this.y;
+        // calculate pixel coords from tile coords
         this.x = MAP.tile.width * this.tileX + this.xOffset;
         this.y = MAP.tile.height * this.tileY + this.yOffset;
 
@@ -329,7 +353,10 @@ Player.prototype.normalUpdate = function() {
 };
 
 /*
- * update the player's position for intro animation
+ * update method for intro - update the player's position for intro animation
+ * The player will start off screen and hop on from the botton left,
+ * upon reaching the start location the game state will be set to normal, and
+ * play can start.
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.introAnimate = function(dt) {
@@ -359,7 +386,9 @@ Player.prototype.introAnimate = function(dt) {
 };
 
 /*
- * update the player's rotation for death animation
+ * update method for death - update the player's rotation for death animation
+ * player will fall over by rotating to 45deg, the lie there until the timer
+ * runs out
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.deathAnimate = function(dt) {
@@ -367,13 +396,15 @@ Player.prototype.deathAnimate = function(dt) {
     // rotate to max value of pi/2
     this.rotation = Math.min(Math.PI * (this.deathTimer) * 2, Math.PI / 2);
     if (this.deathTimer > 1.3) {
-        // Death anim complete
+        // Death anim complete, start respawn. If the player has run out of lives
+        // the game state will trigger at reset
         this.state = EntityStateEnum.RESPAWNING;
     }
 };
 
 /*
- * update the player's position for the victory animation
+ * update method for victory - update the player's position for the victory animation
+ * player will jump into water
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.victoryAnimate = function(dt) {
@@ -382,7 +413,7 @@ Player.prototype.victoryAnimate = function(dt) {
         // so that the player jumps from that location, to their currenct location)
         this.jump = new Jump(this.tileX, this.tileY + 1, this.tileX, this.tileY);
     } else if (this.jump.finished) {
-        // Made it to destination
+        // Made it to destination, wait till end of game
     } else {
         // normal jump update
         this.jump.update(dt);
@@ -391,9 +422,9 @@ Player.prototype.victoryAnimate = function(dt) {
     }
 };
 
-
 /*
- * update the player's position for the respawn animation
+ * update method for respawn, update the player's position for the respawn animation
+ * jump back to the start tile
  * parameter: dt, a time delta between ticks
  */
 Player.prototype.respawnAnimate = function(dt) {
@@ -440,7 +471,7 @@ Player.prototype.collision = function() {
         // Collision detection y axis, both player and enemys stay on discrete y
         // levels, so just check if they are on the same level.
         var collideY = enemy.tileY == plr.tileY;
-        if (collideX && collideY && COLLISION_ON){
+        if (collideX && collideY && !enemy.dead && COLLISION_ON){
             collided = true;
             if (enemy.deadly) {
                 plr.state = EntityStateEnum.DEAD;
@@ -457,7 +488,7 @@ Player.prototype.collision = function() {
 };
 
 /*
- * Handle key board input update player tile coords based on arrow key input
+ * Handle input method - handle keyboard input update player tile coords based on arrow key input
  * parameter: key, name of the key pressed(left, right, up, down)
  */
 Player.prototype.handleInput = function(key) {
@@ -479,8 +510,11 @@ Player.prototype.handleInput = function(key) {
     }
 };
 
+
+
+
 /*
- * Jump class - used to calculate the dx, dy values of jumping entity.
+ * Jump constructor - used to calculate the dx, dy values of jumping entity.
  * parameters: startXTile, startYTile - the tile coords of the start the jump
  *             destXTile, destYTile - the tile coords of the end of the jump
  */
@@ -509,9 +543,9 @@ var Jump = function(startXTile, startYTile, destXTile, destYTile) {
 };
 
 /*
- * Update the dx & dyz values of the jump.
- * dyz is the sum dy & dz
- * These values are used to update the jumping entite's x * y values respectively.
+ * Jump update method - update the dx & dyz values of the jump.
+ * dyz is the sum dy & dz.
+ * dx & dyz are used to update the jumping entite's x & y values respectively.
  * parameter: dt, a time delta between ticks
  */
 Jump.prototype.update = function(dt) {
@@ -536,7 +570,7 @@ Jump.prototype.update = function(dt) {
 };
 
 /*
- * Calculate jump z from x & y, based on the quadratic eqn:
+ * Calculate jump z method - calculate z from x & y, based on the quadratic eqn:
  * z = (4H/D)(x - (x^2)/D), where D is the distance of the jump and H is the height of the jump
  */
 Jump.prototype.calculateZ = function(x, y) {
