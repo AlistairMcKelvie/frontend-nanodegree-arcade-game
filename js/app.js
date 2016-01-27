@@ -609,7 +609,7 @@ var createEnemies = function() {
     var bugRows = [1, 3, 4];
     // generate random bugs in each row and push to allEnemies
     bugRows.forEach(function(row) {
-        var bugCount = randomInt(3, 5);
+        var bugCount = randomInt(2, 4);
         for (var i = 0; i < bugCount; i++) {
             allEnemies.push(new Bug(randomInt(MAP.minXTile, MAP.maxXTile), row));
         }
