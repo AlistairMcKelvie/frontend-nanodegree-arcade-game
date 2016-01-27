@@ -88,14 +88,15 @@ var GameState = function() {
 
 /*
  * Games state update method, called by the engine.
- * Currently just counts up to the end of the game after victory / loss
+ * Currently just counts up to the end of the game after victory / loss, restarting the game when it ends
  */
 GameState.prototype.update = function(dt) {
     // if th
     if (this.state == GameStatesEnum.VICTORY || this.state == GameStatesEnum.LOSE) {
         this.gameEndCounter += dt;
         if (this.gameEndCounter > 5) {
-            newGame();
+            // start new game
+            startGame();
         }
     }
 };
@@ -665,10 +666,23 @@ var createEnemies = function() {
 /*
  * Global objects
  */
-var allEnemies = createEnemies();
-// player starts offscreen and jumps on
-var player = new Player(MAP.minXTile - 1, MAP.maxYTile);
-var gameState = new GameState();
+var allEnemies;
+var player;
+var gameState;
+
+/*
+ * Function to statrt / restart game
+ */
+var startGame = function() {
+    allEnemies = createEnemies();
+    // player starts offscreen and jumps on
+    player = new Player(MAP.minXTile - 1, MAP.maxYTile);
+    gameState = new GameState();
+}
+// start the game
+startGame();
+
+
 
 
 // This listens for key presses and sends the keys to your
