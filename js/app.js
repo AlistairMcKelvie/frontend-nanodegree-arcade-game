@@ -76,7 +76,7 @@ var EntityStateEnum = {
 
 
 /*
- * Game state constuctor, used for tracking what the current behaviour of the game should be.
+ * Game state constructor, used for tracking what the current behaviour of the game should be.
  * Currently just contains a state property, and a counter to end the game after win / loss.
  */
 var GameState = function() {
@@ -159,7 +159,7 @@ GameEntity.prototype.render = function() {
  */
 var Bug = function(initTileX, initTileY) {
     this.base = GameEntity;
-    this.base(initTileX, initTileY);
+    GameEntity.call(this, initTileX, initTileY);
     // initial speed, random value 0-700
     this.u = Math.random() * 700;
     this.v = 0;
@@ -174,7 +174,8 @@ var Bug = function(initTileX, initTileY) {
 
     this.sprite = IMAGES.bug;
 };
-Bug.prototype = new GameEntity;
+Bug.prototype = Object.create(GameEntity.prototype);
+Bug.prototype.constructor = Bug;
 
 /*
  * Update method, updates the bugs's position, calls a specific update method based on
@@ -250,14 +251,14 @@ Bug.prototype.collide = function() {
  * Parameters: initX, initY - tile coords to create entity at.
  */
 var Rock = function(initTileX, initTileY) {
-    this.base = GameEntity;
-    this.base(initTileX, initTileY);
+    GameEntity.call(this, initTileX, initTileY);
     // width of the entity - used for collision detection
     this.width = 100;
 
     this.sprite = IMAGES.rock;
 };
-Rock.prototype = new GameEntity;
+Rock.prototype = Object.create(GameEntity.prototype);
+Rock.prototype.constructor = Rock;
 
 /*
  * Bug update method, called by the engine
@@ -280,8 +281,7 @@ Rock.prototype.collide = function() {
  * Parameters: initX, initY - tile coords to create entity at
  */
 var Player = function(initTileX, initTileY) {
-    this.base = GameEntity;
-    this.base(initTileX, initTileY);
+    GameEntity.call(this, initTileX, initTileY);
     // current player lives
     this.lives = 3;
     // width of the player - used for collision detection
@@ -289,7 +289,8 @@ var Player = function(initTileX, initTileY) {
 
     this.sprite = IMAGES.player;
 };
-Player.prototype = new GameEntity;
+Player.prototype = Object.create(GameEntity.prototype);
+Player.prototype.constructor = Player;
 
 /*
  * update method, the player's position
