@@ -39,7 +39,7 @@ var Map = function(){
     this.startX = Math.ceil(this.maxXTile / 2);
     this.startY = this.maxYTile;
 };
-var MAP = new Map;
+var MAP = new Map();
 
 
 /*
