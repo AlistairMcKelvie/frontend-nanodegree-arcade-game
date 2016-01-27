@@ -1,5 +1,5 @@
 // for testing
-COLLISION_ON = true;
+var COLLISION_ON = true;
 
 /*
  * All images used in the game. No longer added in engine, just add them here.
@@ -19,7 +19,7 @@ var IMAGES = {
  * and define the size of the players moves, the locations of the rocks and the size
  * of the map. Pixel coordinates are calculated from the the tile coordinates as required.
  */
-var Map = function(){
+var Map = function() {
     // images corresponding to rows in the map. Each row can only contain on type of image
     // change these to change images and height of the map
     this.rows = [
@@ -32,19 +32,19 @@ var Map = function(){
         IMAGES.stone,
         IMAGES.grass,
         IMAGES.grass
-    ],
+    ];
     // bounds of the map, the width can be changed by altering maxXTile min values should
     // be left at zero, and the height of the map should be changed by modifying the rows
     // array above
-    this.minXTile = 0,
-    this.maxXTile = 8,
-    this.minYTile = 0,
-    this.maxYTile = this.rows.length - 1,
+    this.minXTile = 0;
+    this.maxXTile = 8;
+    this.minYTile = 0;
+    this.maxYTile = this.rows.length - 1;
     // size of each tile in pixels
     this.tile = {
         width: 101,
         height: 83
-    }
+    };
     // starting location of the player (bottom middle) this can be changed here
     this.startX = Math.ceil(this.maxXTile / 2);
     this.startY = this.maxYTile;
@@ -129,7 +129,7 @@ var GameEntity = function(initTileX, initTileY) {
     this.deadly = false;
 
     this.state = EntityStateEnum.NORMAL;
-}
+};
 
 /*
  * Render the the entity method, called by the engine
@@ -195,7 +195,7 @@ Bug.prototype.normalUpdate = function(dt) {
     if (this.uChangeTimer <= 0) {
         // generate a new target speed, if it's currently stationary
         // set a random speed, otherwise stop it
-        if (this.uTarget == 0) {
+        if (this.uTarget === 0) {
             this.uTarget = Math.random() * 700;
             this.uChangeTimer = 2;
         } else {
@@ -211,7 +211,7 @@ Bug.prototype.normalUpdate = function(dt) {
     if (this.x > ctx.canvas.width) {
         this.x = this.x % ctx.canvas.width;
     }
-}
+};
 
 /*
  * Bug update if it's dead - fly off screen
@@ -243,7 +243,7 @@ Bug.prototype.collide = function() {
     this.u = -this.u;
 
     this.state = EntityStateEnum.DEAD;
-}
+};
 
 /*
  * Rock enemy constructor. Stationary, not deadly, just prevents player movement
@@ -256,7 +256,7 @@ var Rock = function(initTileX, initTileY) {
     this.width = 100;
 
     this.sprite = IMAGES.rock;
-}
+};
 Rock.prototype = new GameEntity;
 
 /*
@@ -464,11 +464,7 @@ Player.prototype.collision = function() {
         // If the distance between the is less than 1/2 the sum of the player and
         // enemy widths, then a collision has occured.
         var dist = Math.abs(plr.x - enemy.x);
-        if (dist <= (plr.width + enemy.width) / 2) {
-            var collideX = true;
-        } else {
-            var collideX = false;
-        }
+        var collideX = dist <= (plr.width + enemy.width) / 2;
         // Collision detection y axis, both player and enemys stay on discrete y
         // levels, so just check if they are on the same level.
         var collideY = enemy.tileY == plr.tileY;
@@ -484,7 +480,7 @@ Player.prototype.collision = function() {
             }
             enemy.collide();
         }
-    })
+    });
     return collided;
 };
 
@@ -523,7 +519,7 @@ var Jump = function(startXTile, startYTile, destXTile, destYTile) {
     // coords of the jump, relative to start location
     this.x = 0;
     this.y = 0;
-    this.z = 0
+    this.z = 0;
     // coords of the destination, relative to the start location
     this.destX = (destXTile - startXTile) * MAP.tile.width;
     this.destY = (destYTile - startYTile) * MAP.tile.height;
@@ -584,7 +580,7 @@ Jump.prototype.calculateZ = function(x, y) {
  * Screen text function, used for displaying text on the screen.
  * called by the engine
  */
-renderScreenText = function() {
+var renderScreenText = function() {
     // display current player lives
     ctx.font = '40px serif';
     ctx.textBaseline = 'top';
@@ -597,11 +593,7 @@ renderScreenText = function() {
         ctx.font = '120px san-serif';
         ctx.fillStyle = '#ff0';
         ctx.textAlign = 'center';
-        if (gameState.state == GameStatesEnum.VICTORY) {
-            var text = 'WINNER!';
-        } else {
-            var text = 'YOU LOSE.';
-        }
+        var text = gameState.state == GameStatesEnum.VICTORY ? 'WINNER!' : 'YOU LOSE.';
         ctx.fillText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
         ctx.strokeText(text, MAP.tile.width * (MAP.maxXTile + 1) * 0.5, MAP.tile.height * (MAP.maxYTile + 1) * 0.5);
     }
@@ -650,17 +642,14 @@ var createEnemies = function() {
         // Keep trying to add rocks until up to the rock count
         // will fail and try again if the generate value is already in 
         // the set or the required missing tile
-        col = randomInt(MAP.minXTile, MAP.maxXTile);
+        var col = randomInt(MAP.minXTile, MAP.maxXTile);
         if (col != missingRock && !addedRocks.has(col)) {
             allEnemies.push(new Rock(col, row));
             addedRocks.add(col);
             addedRockCount++;
         }
     }
-    return allEnemies
-
-    // create the game state
-    gameState = new GameState();
+    return allEnemies;
 };
 
 /*
@@ -671,14 +660,14 @@ var player;
 var gameState;
 
 /*
- * Function to statrt / restart game
+ * Function to start / restart game
  */
 var startGame = function() {
     allEnemies = createEnemies();
     // player starts offscreen and jumps on
     player = new Player(MAP.minXTile - 1, MAP.maxYTile);
     gameState = new GameState();
-}
+};
 // start the game
 startGame();
 
