@@ -471,7 +471,7 @@ Player.prototype.collision = function() {
         // Collision detection y axis, both player and enemys stay on discrete y
         // levels, so just check if they are on the same level.
         var collideY = enemy.tileY == plr.tileY;
-        if (collideX && collideY && !enemy.dead && COLLISION_ON){
+        if (collideX && collideY && enemy.state != EntityStateEnum.DEAD && COLLISION_ON){
             collided = true;
             if (enemy.deadly) {
                 plr.state = EntityStateEnum.DEAD;
